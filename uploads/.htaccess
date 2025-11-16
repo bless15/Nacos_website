@@ -1,0 +1,8 @@
+# Prevent direct access to uploads via URL
+# Files should be served through PHP with proper authentication
+Options -Indexes
+
+# Deny execution of PHP files in uploads
+<FilesMatch "\.php$">
+    Deny from all
+</FilesMatch>

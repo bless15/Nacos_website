@@ -1,0 +1,55 @@
+[2025-11-02 23:58:40] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-02 23:59:08] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-02 23:59:25] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-02 23:59:41] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: admin_tech
+[2025-11-03 00:00:49] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: admin_events
+[2025-11-03 00:01:14] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: admin_events
+[2025-11-03 00:01:25] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: admin_events
+[2025-11-03 00:02:30] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: admin_events
+[2025-11-03 00:02:36] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: admin_events
+[2025-11-03 00:02:57] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-03 00:03:09] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-03 00:06:00] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-03 00:06:06] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-03 00:06:32] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-03 00:07:12] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-03 00:08:20] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-03 00:10:06] [info] User: admin_tech | IP: ::1 | Event: Successful login: admin_tech
+[2025-11-03 00:11:28] [info] User: admin_tech | IP: ::1 | Event: User logged out: admin_tech
+[2025-11-03 00:11:36] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-03 06:20:32] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-03 07:08:31] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-03 13:06:31] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-03 13:06:36] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-03 15:55:00] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-03 15:58:57] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-03 16:06:28] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-03 16:06:58] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-03 17:39:22] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-04 06:06:47] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-04 09:17:25] [info] User: super_admin | IP: ::1 | Event: Administrator logged out: super_admin
+[2025-11-04 09:17:55] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-04 09:51:46] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 23
+[2025-11-04 09:52:36] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 23
+[2025-11-04 09:52:45] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 23
+[2025-11-04 09:52:55] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 22
+[2025-11-05 06:28:41] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-05 06:30:28] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 23
+[2025-11-05 06:37:37] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 22 by admin ID: 1
+[2025-11-05 06:49:10] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 24 by admin ID: 1
+[2025-11-05 10:54:40] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-05 12:23:03] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-07 06:46:32] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-07 07:05:21] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-07 08:20:26] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-07 08:22:43] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-07 10:21:21] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-07 11:57:20] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-09 06:07:09] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-11 11:48:20] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-12 05:40:38] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-12 05:40:49] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-14 17:00:12] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-14 17:00:29] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 25 by admin ID: 1
+[2025-11-16 08:42:48] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-16 09:08:14] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 26 by admin ID: 1
