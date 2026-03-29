@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================
- * NACOS DASHBOARD - EVENTS MANAGEMENT
+ * NACOS DASHBOARD - events MANAGEMENT
  * ============================================
  * Purpose: List and manage all events
  * Access: Requires authentication
@@ -12,12 +12,11 @@
 // Security gate
 require_once __DIR__ . '/../includes/security.php';
 
-// Include required files
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 // Require login
-requireAdminRole();
 
 // Get current user
 $current_user = getCurrentMember();
@@ -35,12 +34,14 @@ $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
 $per_page = 12;
 $offset = ($page - 1) * $per_page;
 
+$offset = ($page - 1) * $per_page;
+
 // Build query
 $where_conditions = [];
 $params = [];
 
 if (!empty($search)) {
-    $where_conditions[] = "(event_name LIKE ? OR description LIKE ? OR location LIKE ?)";
+    $where_conditions[] = "(event_name LIKE ? OR description LIKE ? OR location LIKE ? )";
     $search_term = "%{$search}%";
     $params[] = $search_term;
     $params[] = $search_term;
@@ -60,7 +61,7 @@ if (!empty($status_filter)) {
 $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
 
 // Get total count
-$count_query = "SELECT COUNT(*) as total FROM EVENTS {$where_clause}";
+$count_query = "SELECT COUNT(*) as total FROM events {$where_clause}";
 $total_events = $db->fetchOne($count_query, $params)['total'];
 $total_pages = ceil($total_events / $per_page);
 
@@ -70,8 +71,8 @@ $query = "
         e.*,
         COUNT(DISTINCT me.member_id) as registered_count,
         SUM(CASE WHEN me.attendance_status = 'attended' THEN 1 ELSE 0 END) as attended_count
-    FROM EVENTS e
-    LEFT JOIN MEMBER_EVENTS me ON e.event_id = me.event_id
+    FROM events e
+    LEFT JOIN member_events me ON e.event_id = me.event_id
     {$where_clause}
     GROUP BY e.event_id
     ORDER BY {$sort_by} {$sort_order}
@@ -86,18 +87,20 @@ $stats = $db->fetchOne(
         COUNT(*) as total_events,
         SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled,
         -- Compute completed/upcoming purely from event datetime (ignore possibly stale status values)
-        SUM(CASE WHEN (CONCAT(event_date, ' ', COALESCE(event_time, '00:00:00')) <= NOW() AND status != 'cancelled') THEN 1 ELSE 0 END) as completed,
-        SUM(CASE WHEN (CONCAT(event_date, ' ', COALESCE(event_time, '00:00:00')) > NOW() AND status != 'cancelled') THEN 1 ELSE 0 END) as upcoming
-     FROM EVENTS"
+        SUM(CASE WHEN (CONCAT(event_date, ' ', COALESCE(start_time, '00:00:00')) <= NOW() AND status != 'cancelled') THEN 1 ELSE 0 END) as completed,
+        SUM(CASE WHEN (CONCAT(event_date, ' ', COALESCE(start_time, '00:00:00')) > NOW() AND status != 'cancelled') THEN 1 ELSE 0 END) as upcoming
+     FROM events"
 );
 
 // Get flash message
 $flash = getFlashMessage();
+$delete_csrf_token = generateCSRFToken();
 
 // Helper function to determine event status based on date
 function getEventStatus($event) {
     $now = time();
-    $event_date = strtotime($event['event_date'] . ' ' . $event['event_time']);
+    $event_time = $event['start_time'] ?? '00:00:00';
+    $event_date = strtotime($event['event_date'] . ' ' . $event_time);
     
     if ($event['status'] === 'cancelled') {
         return ['status' => 'cancelled', 'color' => 'danger', 'icon' => 'ban'];
@@ -120,6 +123,7 @@ function getEventStatus($event) {
 
 // Helper function to format date
 function formatEventDate($date, $time) {
+    $time = $time ?: '00:00:00';
     $datetime = strtotime($date . ' ' . $time);
     $now = time();
     $diff = $datetime - $now;
@@ -143,17 +147,194 @@ function formatEventDate($date, $time) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Events Management - NACOS Dashboard</title>
     <link rel="icon" href="../assets/images/favicon.png" type="image/png">
-    
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Custom CSS -->
-    <link rel="stylesheet" href="../assets/css/admin.css">
-    
     <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --sidebar-bg: #2c3e50;
+            --sidebar-hover: #34495e;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+        }
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 260px;
+            background: var(--sidebar-bg);
+            color: white;
+            overflow-y: auto;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            text-align: center;
+        }
+        .sidebar-header h4 {
+            margin: 10px 0 5px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .sidebar-header small {
+            opacity: 0.9;
+        }
+        .sidebar-menu {
+            padding: 20px 0;
+        }
+        .sidebar-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background: var(--sidebar-hover);
+            color: white;
+            padding-left: 30px;
+        }
+        .sidebar-menu a i {
+            width: 25px;
+            margin-right: 10px;
+        }
+        /* Hamburger toggle */
+        .menu-toggle {
+            display: none;
+            border: none;
+            background: transparent;
+            color: #667eea;
+            font-size: 22px;
+            padding: 6px 10px;
+            border-radius: 8px;
+        }
+        .menu-toggle:focus {
+            outline: 2px solid rgba(102,126,234,0.35);
+            outline-offset: 2px;
+        }
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 900;
+            pointer-events: none;
+        }
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        /* Top Bar */
+        .top-bar {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            animation: zoomLiftIn 1s cubic-bezier(0.22, 1, 0.36, 1) 0.15s backwards;
+        }
+        .top-bar h3 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }
+
+        .header-right-icon {
+            display: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            align-items: center;
+            justify-content: center;
+            background: rgba(102,126,234,0.08);
+            color: var(--primary-color);
+            font-size: 18px;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        /* Stats Cards */
+        .stats-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+        .stats-card .icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: white;
+            margin-bottom: 15px;
+        }
+        .stats-card h3 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+            color: #333;
+        }
+        .stats-card p {
+            margin: 5px 0 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .bg-gradient-primary { background: linear-gradient(135deg, #667eea, #764ba2); }
+        .bg-gradient-success { background: linear-gradient(135deg, #11998e, #38ef7d); }
+        .bg-gradient-warning { background: linear-gradient(135deg, #f093fb, #f5576c); }
+        .bg-gradient-info { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+        /* Content Cards */
+        .content-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+            animation: zoomLiftIn 1s cubic-bezier(0.22, 1, 0.36, 1) 1.00s backwards;
+        }
+        .content-card h5 {
+            margin-bottom: 20px;
+            font-weight: 600;
+            color: #333;
+        }
+        .table { margin: 0; }
+        .badge { padding: 5px 10px; border-radius: 5px; }
         .event-card {
             background: white;
             border-radius: 12px;
@@ -164,12 +345,10 @@ function formatEventDate($date, $time) {
             display: flex;
             flex-direction: column;
         }
-        
         .event-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
         }
-        
         .event-header {
             padding: 20px;
             background: linear-gradient(135deg, #667eea, #764ba2);
@@ -177,7 +356,6 @@ function formatEventDate($date, $time) {
             position: relative;
             overflow: hidden;
         }
-        
         .event-header::before {
             content: '';
             position: absolute;
@@ -188,7 +366,6 @@ function formatEventDate($date, $time) {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 50%;
         }
-        
         .event-type-badge {
             position: absolute;
             top: 10px;
@@ -200,7 +377,6 @@ function formatEventDate($date, $time) {
             background: rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(10px);
         }
-        
         .event-icon {
             width: 60px;
             height: 60px;
@@ -212,7 +388,6 @@ function formatEventDate($date, $time) {
             font-size: 28px;
             margin-bottom: 10px;
         }
-        
         .event-title {
             font-size: 18px;
             font-weight: 600;
@@ -220,14 +395,12 @@ function formatEventDate($date, $time) {
             position: relative;
             z-index: 1;
         }
-        
         .event-body {
             padding: 20px;
             flex-grow: 1;
             display: flex;
             flex-direction: column;
         }
-        
         .event-description {
             color: #666;
             font-size: 14px;
@@ -237,27 +410,14 @@ function formatEventDate($date, $time) {
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        
         .event-meta {
             display: flex;
             flex-direction: column;
             gap: 10px;
             margin-bottom: 15px;
         }
-        
-        .meta-item {
-            display: flex;
-            align-items: center;
-            font-size: 14px;
-            color: #666;
-        }
-        
-        .meta-item i {
-            width: 20px;
-            color: var(--primary-color);
-            margin-right: 8px;
-        }
-        
+        .meta-item { display: flex; align-items: center; font-size: 14px; color: #666; }
+        .meta-item i { width: 20px; color: var(--primary-color); margin-right: 8px; }
         .event-stats {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -266,44 +426,18 @@ function formatEventDate($date, $time) {
             padding-top: 15px;
             border-top: 1px solid #f0f0f0;
         }
-        
-        .stat-item {
-            text-align: center;
-            padding: 8px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-        
-        .stat-item .number {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--primary-color);
-        }
-        
-        .stat-item .label {
-            font-size: 12px;
-            color: #666;
-        }
-        
-        .event-actions {
-            display: flex;
-            gap: 5px;
-            margin-top: auto;
-        }
-        
-        .event-actions .btn {
-            flex: 1;
-            font-size: 13px;
-            padding: 8px 10px;
-        }
-        
+        .stat-item { text-align: center; padding: 8px; background: #f8f9fa; border-radius: 8px; }
+        .stat-item .number { font-size: 20px; font-weight: 700; color: var(--primary-color); }
+        .stat-item .label { font-size: 12px; color: #666; }
+        .event-actions { display: flex; gap: 5px; margin-top: auto; }
+        .event-actions .btn { flex: 1; font-size: 13px; padding: 8px 10px; }
         .stats-overview {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-bottom: 25px;
+            animation: zoomLiftIn 1s cubic-bezier(0.22, 1, 0.36, 1) 0.40s backwards;
         }
-        
         .stat-box {
             background: white;
             padding: 20px;
@@ -313,7 +447,6 @@ function formatEventDate($date, $time) {
             align-items: center;
             gap: 15px;
         }
-        
         .stat-icon {
             width: 50px;
             height: 50px;
@@ -324,27 +457,31 @@ function formatEventDate($date, $time) {
             font-size: 24px;
             color: white;
         }
-        
-        .stat-info h3 {
-            margin: 0;
-            font-size: 28px;
-            font-weight: 700;
-        }
-        
-        .stat-info p {
-            margin: 0;
-            color: #666;
-            font-size: 14px;
-        }
-        
+        .stat-info h3 { margin: 0; font-size: 28px; font-weight: 700; }
+        .stat-info p { margin: 0; color: #666; font-size: 14px; }
         .filters-card {
             background: white;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             margin-bottom: 25px;
+            animation: zoomLiftIn 1s cubic-bezier(0.22, 1, 0.36, 1) 0.70s backwards;
         }
-        
+        @keyframes zoomLiftIn {
+            from {
+                opacity: 0;
+                transform: translateY(16px) scale(0.97);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        .mobile-filter-toggle { display: none; }
+        .mobile-collapsible { display: block; }
+        .filters-card .filter-group { min-width: 0; }
+        .filter-dropdown .btn { width: 100%; justify-content: space-between; align-items: center; }
+        .filter-dropdown .dropdown-menu { width: 100%; max-height: 260px; overflow-y: auto; }
         .empty-state {
             background: white;
             padding: 60px 20px;
@@ -352,74 +489,167 @@ function formatEventDate($date, $time) {
             text-align: center;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
         }
-        
-        .empty-state i {
-            font-size: 64px;
-            color: #ddd;
+        .empty-state i { font-size: 64px; color: #ddd; margin-bottom: 20px; }
+        .empty-state h4 { color: #666; margin-bottom: 10px; }
+        .empty-state p { color: #999; }
+        /* Responsive */
+        @media (max-width: 992px) {
+            .menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+            .main-content { margin-left: 0; padding: 15px; min-height: auto; }
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
+            body.sidebar-open .sidebar { transform: translateX(0); }
+            .sidebar-backdrop { display: block; opacity: 0; transition: opacity 0.25s ease; }
+            body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
+            body.sidebar-open { overflow: hidden; }
+            .top-bar { flex-direction: column; align-items: flex-start; gap: 12px; }
+            footer.mt-5 { margin-top: 1rem !important; }
+
+            .page-header-row { flex-direction: column; align-items: stretch !important; gap: 10px; }
+            .header-left { width: 100%; display: flex; align-items: center; justify-content: space-between; }
+            .header-left .header-title { display: none; }
+            .header-right-icon { display: inline-flex; }
+            .page-header-row .btn-primary,
+            .top-bar .btn-primary.add-event-btn {
+                width: 100%;
+                align-self: stretch;
+                justify-content: center;
+            }
+
+            .mobile-filter-toggle {
+                display: flex;
+                width: 100%;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 10px;
+            }
+
+            .mobile-collapsible { display: none; }
+            .mobile-collapsible.show { display: block; }
+        }
+
+        /* Small-screen header adjustments: keep action button at the side (right) */
+        @media (max-width: 480px) {
+            .page-header-row .btn-primary, .top-bar .btn-primary.add-event-btn { font-size: 14px; border-radius: 10px; }
+        }
+
+        @media (max-width: 360px) {
+            .page-header-row .btn-primary, .top-bar .btn-primary.add-event-btn { width: 100%; align-self: stretch; }
+        }
+
+        /* Stat boxes — compact members style: icon left, number at right */
+        .stats-overview {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
             margin-bottom: 20px;
         }
-        
-        .empty-state h4 {
-            color: #666;
-            margin-bottom: 10px;
+
+        .stat-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 16px;
+            border-radius: 14px;
+            background: white;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+            transition: transform .25s ease, box-shadow .25s ease;
         }
-        
-        .empty-state p {
-            color: #999;
+
+        .stat-box .stat-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: white;
+            flex: 0 0 56px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        }
+
+        /* Icon + left-aligned text stacked vertically */
+        .stat-box .stat-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-left: 8px;
+            text-align: left;
+        }
+
+        .stat-box .stat-info h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 800;
+            color: #2c3e50;
+            line-height: 1.1;
+        }
+
+        .stat-box .stat-info p {
+            margin: 4px 0 0;
+            font-size: 13px;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+
+        .stat-box:hover { transform: translateY(-6px); box-shadow: 0 12px 30px rgba(0,0,0,0.08); }
+
+        @media (min-width: 992px) {
+            .stats-overview { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        @media (max-width: 600px) {
+            /* Force two columns (2x2) on small screens for compact side-by-side stats */
+            .stats-overview { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .stat-box { padding: 12px; }
+            .stat-box .stat-icon { width: 44px; height: 44px; flex: 0 0 44px; }
+            .stat-box .stat-info h3 { font-size: 18px; }
+            /* Keep text aligned next to icon (don't push to far right) */
+            .stat-box .stat-info { margin-left: 8px; text-align: left; }
+        }
+
+        .stat-box h3 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            color: #2c3e50;
+        }
+
+        .stat-box p {
+            margin: 0;
+            color: #7f8c8d;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* Keep the stat boxes as 2 columns (2x2) on narrow viewports */
+        @media (max-width: 600px) {
+            .stats-overview { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .stat-box { padding: 14px; }
         }
     </style>
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="../assets/images/nacos_logo.jpg" alt="NACOS Logo" style="height: 60px; margin-bottom: 10px;">
-            <h4>NACOS Dashboard</h4>
-            <small>Admin Panel</small>
-        </div>
-        
-        <div class="sidebar-menu">
-            <a href="index.php">
-                <i class="fas fa-home"></i> Dashboard
-            </a>
-            <a href="members.php">
-                <i class="fas fa-users"></i> Members
-            </a>
-            <a href="projects.php">
-                <i class="fas fa-project-diagram"></i> Projects
-            </a>
-            <a href="events.php" class="active">
-                <i class="fas fa-calendar-alt"></i> Events
-            </a>
-            <a href="resources.php">
-                <i class="fas fa-book"></i> Resources
-            </a>
-            <a href="partners.php">
-                <i class="fas fa-handshake"></i> Partners
-            </a>
-            <a href="documents.php">
-                <i class="fas fa-folder"></i> Documents
-            </a>
-            <hr style="border-color: rgba(255,255,255,0.1);">
-            <a href="../public/index.php" target="_blank">
-                <i class="fas fa-external-link-alt"></i> View Public Site
-            </a>
-            <a href="logout.php">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
-    </div>
+ <?php require_once __DIR__ . '/includes/sidebar.php'; ?>
     
     <!-- Main Content -->
     <div class="main-content">
         <!-- Top Bar -->
         <div class="top-bar">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h3><i class="fas fa-calendar-alt me-2"></i> Events Management</h3>
-                    <p class="text-muted mb-0">Manage all NACOS events and track attendance</p>
+            <div class="d-flex justify-content-between align-items-center w-100 page-header-row">
+                <div class="d-flex align-items-center gap-3 header-left">
+                    <button class="menu-toggle" type="button" aria-label="Toggle sidebar" aria-expanded="false">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="header-title">
+                        <h3><i class="fas fa-calendar-alt me-2"></i> Events Management</h3>
+                        <p class="text-muted mb-0">Manage all NACOS events and track attendance</p>
+                    </div>
+                    <span class="header-right-icon" aria-hidden="true"><i class="fas fa-calendar-alt"></i></span>
                 </div>
-                <a href="add_event.php" class="btn btn-primary">
+                <a href="add_event.php" class="btn btn-primary add-event-btn">
                     <i class="fas fa-plus me-2"></i> Add New Event
                 </a>
             </div>
@@ -478,7 +708,12 @@ function formatEventDate($date, $time) {
         </div>
         
         <!-- Filters -->
-        <div class="filters-card">
+        <button type="button" class="btn btn-outline-primary mobile-filter-toggle" id="mobileFilterToggle" aria-expanded="false" aria-controls="mobileFilterCard">
+            <span><i class="fas fa-filter me-2"></i>Filter Events</span>
+            <i class="fas fa-chevron-down" id="mobileFilterChevron"></i>
+        </button>
+
+        <div class="filters-card mobile-collapsible" id="mobileFilterCard">
             <form method="GET" action="events.php" class="row g-3">
                 <div class="col-md-4">
                     <label class="form-label">Search Events</label>
@@ -591,11 +826,11 @@ function formatEventDate($date, $time) {
                                 <div class="event-meta">
                                     <div class="meta-item">
                                         <i class="fas fa-calendar-day"></i>
-                                        <span><?php echo formatEventDate($event['event_date'], $event['event_time']); ?></span>
+                                        <span><?php echo formatEventDate($event['event_date'], $event['start_time'] ?? $event['event_time'] ?? '00:00:00'); ?></span>
                                     </div>
                                     <div class="meta-item">
                                         <i class="fas fa-clock"></i>
-                                        <span><?php echo date('g:i A', strtotime($event['event_time'])); ?></span>
+                                        <span><?php $display_time = $event['start_time'] ?? $event['event_time'] ?? '00:00:00'; echo date('g:i A', strtotime($display_time)); ?></span>
                                     </div>
                                     <?php if ($event['location']): ?>
                                         <div class="meta-item">
@@ -645,10 +880,10 @@ function formatEventDate($date, $time) {
                                        class="btn btn-sm btn-outline-warning" title="Edit">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <a href="delete_event.php?id=<?php echo $event['event_id']; ?>" 
-                                       class="btn btn-sm btn-outline-danger" title="Delete">
+                                    <button type="button"
+                                       class="btn btn-sm btn-outline-danger" title="Delete" onclick="deleteEvent(<?php echo (int)$event['event_id']; ?>)">
                                         <i class="fas fa-trash"></i>
-                                    </a>
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -696,9 +931,79 @@ function formatEventDate($date, $time) {
             <small class="text-muted">Developed by <a href="https://johnicity.com.ng/portfolio" target="_blank" class="text-decoration-none">Johnicity</a></small>
         </div>
     </footer>
+
+    <form id="deleteEventForm" method="POST" action="" style="display:none;">
+        <input type="hidden" name="csrf_token" value="<?php echo $delete_csrf_token; ?>">
+    </form>
     
     <?php // Include admin footer which loads Bootstrap and confirmation modal ?>
     <?php include __DIR__ . '/includes/footer.php'; ?>
+
+    <script>
+        function deleteEvent(eventId) {
+            const form = document.getElementById('deleteEventForm');
+            if (!form || !eventId) return;
+
+            const submitDelete = function() {
+                form.action = 'delete_event.php?id=' + encodeURIComponent(eventId);
+                form.submit();
+            };
+
+            if (typeof window.confirmModal !== 'function') {
+                if (confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+                    submitDelete();
+                }
+                return;
+            }
+
+            window.confirmModal('Are you sure you want to delete this event? This action cannot be undone.', {
+                title: 'Delete Event',
+                okLabel: 'Delete'
+            }).then(function(confirmed) {
+                if (confirmed) submitDelete();
+            });
+        }
+
+        (() => {
+            const toggleBtn = document.querySelector('.menu-toggle');
+            const backdrop = document.querySelector('.sidebar-backdrop');
+            const body = document.body;
+            if (!toggleBtn) return;
+
+            const closeMenu = () => {
+                body.classList.remove('sidebar-open');
+                toggleBtn.setAttribute('aria-expanded', 'false');
+            };
+
+            const toggleMenu = () => {
+                const isOpen = body.classList.toggle('sidebar-open');
+                toggleBtn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            };
+
+            toggleBtn.addEventListener('click', toggleMenu);
+            if (backdrop) {
+                backdrop.addEventListener('click', closeMenu);
+            }
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') closeMenu();
+            });
+        })();
+
+        (() => {
+            const filterToggle = document.getElementById('mobileFilterToggle');
+            const filterCard = document.getElementById('mobileFilterCard');
+            const chevron = document.getElementById('mobileFilterChevron');
+
+            if (!filterToggle || !filterCard || !chevron) return;
+
+            filterToggle.addEventListener('click', () => {
+                const isVisible = filterCard.classList.toggle('show');
+                filterToggle.setAttribute('aria-expanded', isVisible ? 'true' : 'false');
+                chevron.classList.toggle('fa-chevron-up', isVisible);
+                chevron.classList.toggle('fa-chevron-down', !isVisible);
+            });
+        })();
+    </script>
     
     <script>
         // Auto-dismiss alerts

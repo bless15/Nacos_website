@@ -30,10 +30,10 @@ try {
     $tests_failed++;
 }
 
-// Test 2: Check MEMBERS table has role column
-echo "Test 2: MEMBERS table role column... ";
+// Test 2: Check members table has role column
+echo "Test 2: members table role column... ";
 try {
-    $result = $db->fetchOne("SHOW COLUMNS FROM MEMBERS LIKE 'role'");
+    $result = $db->fetchOne("SHOW COLUMNS FROM members LIKE 'role'");
     if ($result) {
         echo "✓ PASSED (Type: {$result['Type']})\n";
         $tests_passed++;
@@ -49,7 +49,7 @@ try {
 // Test 3: Check for admin members
 echo "Test 3: Admin members exist... ";
 try {
-    $admins = $db->fetchAll("SELECT member_id, full_name, matric_no, role FROM MEMBERS WHERE role = 'admin'");
+    $admins = $db->fetchAll("SELECT member_id, full_name, matric_no, role FROM members WHERE role = 'admin'");
     if (count($admins) > 0) {
         echo "✓ PASSED (" . count($admins) . " admin(s) found)\n";
         foreach ($admins as $admin) {

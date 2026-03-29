@@ -9,12 +9,10 @@
  * ============================================
  */
 
-// Security gate
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/security.php';
-
-// Include required files
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 // Initialize session
 initSession();
@@ -34,8 +32,8 @@ if (isLoggedIn()) {
 // Destroy session
 destroySession();
 
-// Redirect to appropriate login page
-session_start();
+// Redirect to appropriate login page: start a fresh session to carry a flash message
+initSession();
 $_SESSION['flash_message'] = 'You have been successfully logged out.';
 $_SESSION['flash_type'] = 'success';
 

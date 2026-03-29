@@ -38,14 +38,14 @@ try {
     exit;
 }
 
-// Test 2: Check if ADMINISTRATORS table exists
-echo "<h2>2. ADMINISTRATORS Table Check</h2>";
+// Test 2: Check if administrators table exists
+echo "<h2>2. administrators Table Check</h2>";
 try {
-    $tableCheck = $db->fetchOne("SHOW TABLES LIKE 'ADMINISTRATORS'");
+    $tableCheck = $db->fetchOne("SHOW TABLES LIKE 'administrators'");
     if ($tableCheck) {
-        echo "<div class='success'>✅ <strong>SUCCESS:</strong> ADMINISTRATORS table exists</div>";
+        echo "<div class='success'>✅ <strong>SUCCESS:</strong> administrators table exists</div>";
     } else {
-        echo "<div class='error'>❌ <strong>ERROR:</strong> ADMINISTRATORS table not found</div>";
+        echo "<div class='error'>❌ <strong>ERROR:</strong> administrators table not found</div>";
         echo "<div class='info'>📝 <strong>Fix:</strong> Import <code>database/schema.sql</code> in phpMyAdmin</div>";
         exit;
     }
@@ -57,7 +57,7 @@ try {
 // Test 3: Count admin accounts
 echo "<h2>3. Admin Accounts Check</h2>";
 try {
-    $adminCount = $db->fetchOne("SELECT COUNT(*) as count FROM ADMINISTRATORS")['count'];
+    $adminCount = $db->fetchOne("SELECT COUNT(*) as count FROM administrators")['count'];
     echo "<div class='success'>✅ <strong>Found:</strong> $adminCount admin account(s) in database</div>";
     
     if ($adminCount == 0) {
@@ -73,7 +73,7 @@ try {
 // Test 4: List all admin accounts
 echo "<h2>4. Available Admin Accounts</h2>";
 try {
-    $admins = $db->fetchAll("SELECT admin_id, username, role, full_name, email, status FROM ADMINISTRATORS ORDER BY admin_id");
+    $admins = $db->fetchAll("SELECT admin_id, username, role, full_name, email, status FROM administrators ORDER BY admin_id");
     
     echo "<table>";
     echo "<tr><th>ID</th><th>Username</th><th>Role</th><th>Full Name</th><th>Status</th></tr>";
@@ -98,7 +98,7 @@ $testPassword = 'Admin@2025';
 echo "<div class='info'>📝 Testing password: <code>$testPassword</code></div>";
 
 try {
-    $testUser = $db->fetchOne("SELECT username, password_hash, status FROM ADMINISTRATORS WHERE username = 'super_admin'");
+    $testUser = $db->fetchOne("SELECT username, password_hash, status FROM administrators WHERE username = 'super_admin'");
     
     if (!$testUser) {
         echo "<div class='error'>❌ <strong>ERROR:</strong> User 'super_admin' not found</div>";
@@ -122,7 +122,7 @@ try {
             $newHash = password_hash($testPassword, PASSWORD_BCRYPT);
             echo "<div class='info'>";
             echo "📝 <strong>To fix this, run this SQL in phpMyAdmin:</strong><br><br>";
-            echo "<code>UPDATE ADMINISTRATORS SET password_hash = '$newHash' WHERE username = 'super_admin';</code>";
+            echo "<code>UPDATE administrators SET password_hash = '$newHash' WHERE username = 'super_admin';</code>";
             echo "</div>";
         }
     }
@@ -137,10 +137,10 @@ echo "<div class='info'>If passwords aren't working, run these SQL commands in p
 $correctHash = password_hash('Admin@2025', PASSWORD_BCRYPT);
 echo "<pre style='background: #f4f4f4; padding: 15px; overflow-x: auto;'>";
 echo "-- Update all admin passwords to: Admin@2025\n";
-echo "UPDATE ADMINISTRATORS SET password_hash = '$correctHash' WHERE username = 'super_admin';\n";
-echo "UPDATE ADMINISTRATORS SET password_hash = '$correctHash' WHERE username = 'admin_tech';\n";
-echo "UPDATE ADMINISTRATORS SET password_hash = '$correctHash' WHERE username = 'admin_events';\n";
-echo "UPDATE ADMINISTRATORS SET password_hash = '$correctHash' WHERE username = 'moderator_1';\n";
+echo "UPDATE administrators SET password_hash = '$correctHash' WHERE username = 'super_admin';\n";
+echo "UPDATE administrators SET password_hash = '$correctHash' WHERE username = 'admin_tech';\n";
+echo "UPDATE administrators SET password_hash = '$correctHash' WHERE username = 'admin_events';\n";
+echo "UPDATE administrators SET password_hash = '$correctHash' WHERE username = 'moderator_1';\n";
 echo "</pre>";
 
 // Summary

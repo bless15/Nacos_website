@@ -12,9 +12,9 @@
 // Security gate
 require_once __DIR__ . '/../includes/security.php';
 
-// Include required files
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 // Initialize database
 $db = getDB();
@@ -36,7 +36,7 @@ $executives = [
 
 // Fetch a larger set of active members for the gallery
 $active_members = $db->fetchAll(
-    "SELECT full_name, matric_no, level FROM MEMBERS WHERE membership_status = 'active' ORDER BY RAND() LIMIT 12"
+    "SELECT full_name, matric_no, level FROM members WHERE membership_status = 'active' ORDER BY RAND() LIMIT 12"
 );
 
 ?>

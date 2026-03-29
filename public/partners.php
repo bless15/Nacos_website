@@ -11,7 +11,7 @@ $db = getDB();
 
 $partners = $db->fetchAll(
     "SELECT partner_id, company_name, company_logo, website_url, description, partnership_start_date
-     FROM PARTNERS
+     FROM partners
      WHERE status = 'active' AND visibility = 'public'
      ORDER BY partnership_start_date DESC"
 );

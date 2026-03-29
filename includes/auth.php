@@ -14,70 +14,16 @@ if (!defined('NACOS_ACCESS')) {
     die('Direct access not permitted');
 }
 
-// ============================================
-// SESSION MANAGEMENT
-// ============================================
+// Session management delegated to includes/session.php
+require_once __DIR__ . '/session.php';
 
-/**
- * Initialize secure session
- */
-function initSession() {
-    if (session_status() === PHP_SESSION_NONE) {
-        // Only attempt to modify session ini settings and start a session if headers haven't been sent yet
-        if (!headers_sent()) {
-            // Secure session configuration
-            ini_set('session.cookie_httponly', 1);
-            ini_set('session.use_only_cookies', 1);
-            ini_set('session.cookie_secure', 0); // Set to 1 if using HTTPS
-            ini_set('session.cookie_samesite', 'Strict');
-
-            session_name('NACOS_SESSION');
-            session_start();
-
-            // Regenerate session ID periodically to prevent session fixation
-            if (!isset($_SESSION['created'])) {
-                $_SESSION['created'] = time();
-            } else if (time() - $_SESSION['created'] > 1800) { // 30 minutes
-                session_regenerate_id(true);
-                $_SESSION['created'] = time();
-            }
-        } else {
-            // Headers already sent: can't change ini settings or (re)start session here.
-            // Try to start session only if it wasn't started yet and headers_sent is false for cookies,
-            // otherwise just leave session as-is and avoid raising warnings.
-            if (session_status() === PHP_SESSION_NONE) {
-                // Attempt a session_start() but suppress warnings because headers were already sent.
-                @session_start();
-            }
-        }
-    }
-}
-
-// Automatically initialize session when this file is included, if possible.
-// This makes including `auth.php` sufficient to ensure session helpers work in templates.
+// Ensure session is initialized when auth functions are used
 if (php_sapi_name() !== 'cli') {
-    // Suppress any potential warnings here; initSession handles headers_sent() checks.
     try {
         initSession();
     } catch (Throwable $e) {
-        // Don't break page rendering; log and continue.
-        error_log('initSession() failed on include: ' . $e->getMessage());
+        error_log('initSession() failed on auth include: ' . $e->getMessage());
     }
-}
-
-/**
- * Destroy session and logout
- */
-function destroySession() {
-    initSession();
-    
-    $_SESSION = array();
-    
-    if (isset($_COOKIE[session_name()])) {
-        setcookie(session_name(), '', time() - 3600, '/');
-    }
-    
-    session_destroy();
 }
 
 // ============================================
@@ -95,7 +41,7 @@ function authenticateUser($username, $password) {
         $db = getDB();
         
         $query = "SELECT admin_id, username, password_hash, role, full_name, email, status, last_login 
-                  FROM ADMINISTRATORS 
+                  FROM administrators 
                   WHERE username = ? 
                   LIMIT 1";
         
@@ -116,7 +62,7 @@ function authenticateUser($username, $password) {
         }
         
         // Update last login timestamp
-        $updateQuery = "UPDATE ADMINISTRATORS SET last_login = NOW() WHERE admin_id = ?";
+        $updateQuery = "UPDATE administrators SET last_login = NOW() WHERE admin_id = ?";
         $db->query($updateQuery, [$user['admin_id']]);
         
         return $user;
@@ -324,23 +270,142 @@ function isMemberAdmin() {
 }
 
 /**
+ * Check if logged-in member has executive role
+ * @return bool
+ */
+function isMemberExecutive() {
+    initSession();
+    return isset($_SESSION['member_role']) && $_SESSION['member_role'] === 'executive';
+}
+
+/**
+ * Check if logged-in member has admin panel access (admin or executive)
+ * @return bool
+ */
+function hasMemberAdminPanelAccess() {
+    return isMemberAdmin() || isMemberExecutive();
+}
+
+/**
+ * Get logged-in executive position
+ * @return string|null
+ */
+function getMemberExecutivePosition() {
+    initSession();
+
+    if (isset($_SESSION['member_executive_position']) && $_SESSION['member_executive_position'] !== '') {
+        return $_SESSION['member_executive_position'];
+    }
+
+    if (isset($_SESSION['member_id'])) {
+        $db = getDB();
+        $member = $db->fetchOne("SELECT executive_position FROM members WHERE member_id = ?", [$_SESSION['member_id']]);
+        if ($member && !empty($member['executive_position'])) {
+            $_SESSION['member_executive_position'] = $member['executive_position'];
+            return $member['executive_position'];
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Check if executive can access a specific admin page
+ * @param string $page
+ * @return bool
+ */
+function canExecutiveAccessPage($page) {
+    $always_allowed = ['index.php', 'logout.php'];
+    if (in_array($page, $always_allowed, true)) {
+        return true;
+    }
+
+    $executive_position = getMemberExecutivePosition();
+    if (!$executive_position) {
+        return false;
+    }
+
+    $permission_map = [
+        'social_director' => [
+            'events.php', 'add_event.php', 'edit_event.php', 'view_event.php', 'delete_event.php', 'event_attendance.php',
+            'documents.php', 'add_document.php', 'view_document.php'
+        ],
+        'general_secretary' => [
+            'documents.php', 'add_document.php', 'edit_document.php', 'view_document.php', 'delete_document.php',
+            'resources.php', 'add_resource.php', 'edit_resource.php', 'view_resource.php', 'delete_resource.php',
+            'past_questions.php'
+        ],
+        'academic_director' => [
+            'resources.php', 'add_resource.php', 'edit_resource.php', 'view_resource.php', 'delete_resource.php',
+            'documents.php', 'add_document.php', 'view_document.php',
+            'past_questions.php'
+        ],
+        'creative_innovative_director' => [
+            'resources.php', 'add_resource.php', 'edit_resource.php', 'view_resource.php', 'delete_resource.php',
+            'projects.php', 'add_project.php', 'edit_project.php', 'view_project.php', 'delete_project.php', 'toggle_featured.php',
+            'documents.php', 'add_document.php', 'view_document.php',
+            'past_questions.php'
+        ],
+        'public_relations_officer' => [
+            'announcements.php', 'add_announcement.php', 'edit_announcement.php', 'delete_announcement.php',
+            'events.php', 'add_event.php', 'edit_event.php', 'view_event.php', 'delete_event.php', 'event_attendance.php',
+            'documents.php', 'add_document.php', 'view_document.php'
+        ],
+    ];
+
+    if (!isset($permission_map[$executive_position])) {
+        return false;
+    }
+
+    return in_array($page, $permission_map[$executive_position], true);
+}
+
+/**
  * Require member to have admin role (redirect if not)
  * @param string $redirect_url URL to redirect to if not admin
  */
 function requireAdminRole($redirect_url = '../public/dashboard.php') {
-    // Check if logged in as admin from ADMINISTRATORS table
+    // Check if logged in as admin from administrators table
     if (isLoggedIn()) {
-        return; // Admin from ADMINISTRATORS table is allowed
+        return; // Admin from administrators table is allowed
     }
     
     // Otherwise, ensure member is logged in
     if (!isMemberLoggedIn()) {
-        redirectWithMessage('../public/login.php', 'You must be logged in to access this page.', 'error');
+        // If not logged in at all, send user to the admin login page (not the public/member login)
+        redirectWithMessage('../admin/login.php', 'You must be logged in to access this page.', 'error');
     }
     
-    // Then check if they have admin role
+    // Then check if they have admin panel role
+    if (!hasMemberAdminPanelAccess()) {
+        redirectWithMessage($redirect_url, 'Access denied. Admin or executive privileges required.', 'error');
+    }
+
+    // Apply executive position-based restrictions
+    if (isMemberExecutive()) {
+        $current_page = basename($_SERVER['PHP_SELF'] ?? 'index.php');
+        if (!canExecutiveAccessPage($current_page)) {
+            redirectWithMessage('index.php', 'Access denied for your executive position.', 'error');
+        }
+    }
+}
+
+/**
+ * Require full admin role (for sensitive admin operations)
+ * @param string $redirect_url URL to redirect to if not full admin
+ */
+function requireFullAdminRole($redirect_url = '../public/dashboard.php') {
+    // Admin from administrators table is always allowed
+    if (isLoggedIn()) {
+        return;
+    }
+
+    if (!isMemberLoggedIn()) {
+        redirectWithMessage('../admin/login.php', 'You must be logged in to access this page.', 'error');
+    }
+
     if (!isMemberAdmin()) {
-        redirectWithMessage($redirect_url, 'Access denied. Admin privileges required.', 'error');
+        redirectWithMessage($redirect_url, 'Access denied. Full admin privileges required.', 'error');
     }
 }
 
@@ -351,7 +416,7 @@ function requireAdminRole($redirect_url = '../public/dashboard.php') {
 function getCurrentMember() {
     initSession();
     
-    // If logged in as admin from ADMINISTRATORS table, return admin data formatted as member
+    // If logged in as admin from administrators table, return admin data formatted as member
     if (isLoggedIn() && isset($_SESSION['admin_id'])) {
         return [
             'member_id' => $_SESSION['admin_id'],
@@ -368,7 +433,7 @@ function getCurrentMember() {
     
     // Fetch the latest member data from the database to ensure it's always up-to-date
     $db = getDB();
-    $member = $db->fetchOne("SELECT * FROM MEMBERS WHERE member_id = ?", [$_SESSION['member_id']]);
+    $member = $db->fetchOne("SELECT * FROM members WHERE member_id = ?", [$_SESSION['member_id']]);
     
     return $member;
 }
@@ -555,7 +620,7 @@ function isAdminMember() {
     // If not in session, check database
     if (isset($_SESSION['member_id'])) {
         $db = getDB();
-        $member = $db->fetchOne("SELECT role FROM MEMBERS WHERE member_id = ?", [$_SESSION['member_id']]);
+        $member = $db->fetchOne("SELECT role FROM members WHERE member_id = ?", [$_SESSION['member_id']]);
         if ($member) {
             $_SESSION['member_role'] = $member['role'];
             return $member['role'] === 'admin' || $member['role'] === 'executive';

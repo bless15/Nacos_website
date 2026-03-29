@@ -26,7 +26,7 @@ try {
         $db = getDB();
         $partners_for_footer = function_exists('cache_get') ? cache_get('footer_partners') : null;
         if ($partners_for_footer === null) {
-            $partners_for_footer = $db->fetchAll("SELECT company_name, company_logo, website_url, is_featured FROM PARTNERS WHERE status = 'active' AND visibility = 'public' ORDER BY is_featured DESC, partnership_start_date DESC LIMIT 6");
+            $partners_for_footer = $db->fetchAll("SELECT company_name, company_logo, website_url, is_featured FROM partners WHERE status = 'active' AND visibility = 'public' ORDER BY is_featured DESC, partnership_start_date DESC LIMIT 6");
             if (function_exists('cache_set')) cache_set('footer_partners', $partners_for_footer, 120);
         }
     }
@@ -61,6 +61,7 @@ try {
                     <li><a href="index.php">Home</a></li>
                     <li><a href="about.php">About Us</a></li>
                     <li><a href="events.php">Events</a></li>
+                    <li><a href="announcements.php">Announcements</a></li>
                     <li><a href="projects.php">Projects</a></li>
                     <li><a href="contact.php">Contact</a></li>
                     <li><a href="partners.php">Partners</a></li>

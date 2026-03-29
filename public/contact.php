@@ -9,12 +9,10 @@
  * ============================================
  */
 
-// Security gate
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/security.php';
-
-// Include required files
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 // Initialize database
 $db = getDB();

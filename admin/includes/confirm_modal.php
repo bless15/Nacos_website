@@ -58,8 +58,7 @@
       pendingResolve = null;
     });
 
-    // Intercept links, forms and special buttons marked for confirmation
-    document.addEventListener('DOMContentLoaded', function(){
+    function bindConfirmHandlers() {
       // forms
       document.querySelectorAll('.confirm-action-form').forEach(function(form){
         if (form._confirm_bound) return; form._confirm_bound = true;
@@ -116,7 +115,14 @@
           });
         });
       });
-    });
+    }
+
+    // Intercept links, forms and special buttons marked for confirmation
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bindConfirmHandlers);
+    } else {
+      bindConfirmHandlers();
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initConfirmModal);

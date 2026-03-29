@@ -13,7 +13,8 @@
 require_once __DIR__ . '/../includes/security.php';
 
 // Include required files
-require_once '../config/database.php';
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
 require_once '../includes/auth.php';
 
 // Require admin login
@@ -26,14 +27,14 @@ $db = getDB();
 $doc_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 // Fetch document details
-$document = $db->fetchOne("SELECT * FROM DOCUMENTS WHERE doc_id = :id", [':id' => $doc_id]);
+$document = $db->fetchOne("SELECT * FROM documents WHERE doc_id = :id", [':id' => $doc_id]);
 
 if (!$document) {
     redirectWithMessage('documents.php', 'Document not found.', 'error');
 }
 
 // Fetch uploader details
-$uploader = $db->fetchOne("SELECT full_name FROM MEMBERS WHERE member_id = :id", [':id' => $document['uploaded_by']]);
+$uploader = $db->fetchOne("SELECT full_name FROM members WHERE member_id = :id", [':id' => $document['uploaded_by']]);
 
 // Helper function to format file size
 function formatFileSize($bytes) {
@@ -75,11 +76,12 @@ function getVisibilityBadge($visibility) {
 
 // Get file extension
 $file_ext = strtolower(pathinfo($document['file_name'], PATHINFO_EXTENSION));
+$delete_csrf_token = generateCSRFToken();
 
 // Handle download request
 if (isset($_GET['download']) && $_GET['download'] === '1') {
     // Increment download count
-    $db->query("UPDATE DOCUMENTS SET download_count = download_count + 1 WHERE doc_id = :id", [':id' => $doc_id]);
+    $db->query("UPDATE documents SET download_count = download_count + 1 WHERE doc_id = :id", [':id' => $doc_id]);
     
     // Serve the file
     if (file_exists($document['file_path'])) {
@@ -111,6 +113,92 @@ if (isset($_GET['download']) && $_GET['download'] === '1') {
     <link rel="stylesheet" href="../assets/css/admin.css">
     
     <style>
+        
+:root {
+            --primary-color: #0F6B3E;
+            --secondary-color: #1B8A56;
+            --sidebar-bg: #2c3e50;
+            --sidebar-hover: #34495e;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+        }
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 260px;
+            background: var(--sidebar-bg);
+            color: white;
+            overflow-y: auto;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            text-align: center;
+        }
+        .sidebar-header h4 {
+            margin: 10px 0 5px;
+            font-size: 20px;
+            font-weight: 600;
+        }
+        .sidebar-header small {
+            opacity: 0.9;
+        }
+        .sidebar-menu {
+            padding: 20px 0;
+        }
+        .sidebar-menu a {
+            display: block;
+            padding: 12px 20px;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background: var(--sidebar-hover);
+            color: white;
+            padding-left: 30px;
+        }
+        .sidebar-menu a i {
+            width: 25px;
+            margin-right: 10px;
+        }
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .menu-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            border: 2px solid #dee2e6;
+            background: #fff;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+
+        .menu-toggle:hover {
+            background: #f8f9fa;
+        }
+
+        .sidebar-overlay {
+            display: none;
+        }
+
+
         .document-icon {
             font-size: 5rem;
             margin-bottom: 1rem;
@@ -122,7 +210,7 @@ if (isset($_GET['download']) && $_GET['download'] === '1') {
         .txt-icon { color: #6c757d; }
         
         .stat-card {
-            border-left: 4px solid #8b5cf6;
+            border-left: 4px solid #0F6B3E;
             transition: transform 0.2s;
         }
         .stat-card:hover {
@@ -139,42 +227,119 @@ if (isset($_GET['download']) && $_GET['download'] === '1') {
         }
         
         .download-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0F6B3E 0%, #1B8A56 100%);
             border: none;
             font-size: 1.1rem;
             padding: 12px 30px;
         }
         .download-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 12px rgba(15, 107, 62, 0.35);
+        }
+
+        .info-row code {
+            color: #0F6B3E;
+            background: transparent;
+            font-weight: 700;
+            padding: 0;
+        }
+
+        @media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+                box-shadow: 6px 0 20px rgba(0, 0, 0, 0.2);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+
+            .menu-toggle {
+                display: inline-flex;
+            }
+
+            .sidebar-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.45);
+                z-index: 999;
+            }
+
+            .sidebar-overlay.show {
+                display: block;
+            }
+
+            .page-header-actions {
+                width: 100%;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
+            }
+
+            .page-header-actions .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .sidebar-header {
+                padding: 16px;
+            }
+
+            .sidebar-header h4 {
+                font-size: 18px;
+            }
+
+            .sidebar-menu a {
+                padding: 10px 16px;
+            }
+
+            .sidebar-menu a:hover,
+            .sidebar-menu a.active {
+                padding-left: 20px;
+            }
+
+            .main-content {
+                padding: 12px;
+            }
+
+            .page-header-actions {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
+    	     <?php require_once __DIR__ . '/includes/sidebar.php'; ?>
+
     <div class="wrapper">
-        <!-- Sidebar -->
-        <?php include 'includes/sidebar.php'; ?>
-        
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Top Navigation -->
-            <?php include 'includes/navbar.php'; ?>
-            
             <!-- Page Content -->
             <div class="container-fluid px-4 py-4">
                 <!-- Page Header -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
                     <div>
-                        <h1 class="h3 mb-0">Document Details</h1>
+                        <div class="d-flex align-items-center gap-2 mb-2 mb-md-0">
+                            <button type="button" class="menu-toggle" id="menuToggle" aria-label="Toggle navigation menu">
+                                <i class="fas fa-bars"></i>
+                            </button>
+                            <h1 class="h3 mb-0">Document Details</h1>
+                        </div>
                         <p class="text-muted">View and download official document</p>
                     </div>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 page-header-actions">
                         <a href="edit_document.php?id=<?php echo $doc_id; ?>" class="btn btn-warning">
                             <i class="fas fa-edit"></i> Edit
                         </a>
-                        <a href="delete_document.php?id=<?php echo $doc_id; ?>" class="btn btn-danger">
+                        <button type="button" class="btn btn-danger" onclick="deleteDocument(<?php echo (int)$doc_id; ?>)">
                             <i class="fas fa-trash"></i> Delete
-                        </a>
+                        </button>
                         <a href="documents.php" class="btn btn-secondary">
                             <i class="fas fa-arrow-left"></i> Back
                         </a>
@@ -381,8 +546,63 @@ if (isset($_GET['download']) && $_GET['download'] === '1') {
             </div>
         </div>
     </div>
+
+    <form id="deleteDocumentForm" method="POST" action="" style="display:none;">
+        <input type="hidden" name="csrf_token" value="<?php echo $delete_csrf_token; ?>">
+    </form>
     
     <?php // Include admin footer which loads Bootstrap and confirmation modal ?>
     <?php include __DIR__ . '/includes/footer.php'; ?>
+
+    <script>
+        function deleteDocument(documentId) {
+            const form = document.getElementById('deleteDocumentForm');
+            if (!form || !documentId) return;
+
+            const submitDelete = function() {
+                form.action = 'delete_document.php?id=' + encodeURIComponent(documentId);
+                form.submit();
+            };
+
+            if (typeof window.confirmModal !== 'function') {
+                if (confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
+                    submitDelete();
+                }
+                return;
+            }
+
+            window.confirmModal('Are you sure you want to delete this document? This action cannot be undone.', {
+                title: 'Delete Document',
+                okLabel: 'Delete'
+            }).then(function(confirmed) {
+                if (confirmed) submitDelete();
+            });
+        }
+
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarOverlay = document.getElementById('sidebarBackdrop') || document.getElementById('sidebarOverlay');
+
+        function closeSidebar() {
+            if (!sidebar || !sidebarOverlay) return;
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+        }
+
+        if (menuToggle && sidebar && sidebarOverlay) {
+            menuToggle.addEventListener('click', function () {
+                sidebar.classList.toggle('show');
+                sidebarOverlay.classList.toggle('show');
+            });
+
+            sidebarOverlay.addEventListener('click', closeSidebar);
+
+            window.addEventListener('resize', function () {
+                if (window.innerWidth > 991.98) {
+                    closeSidebar();
+                }
+            });
+        }
+    </script>
 </body>
 </html>

@@ -13,7 +13,7 @@
 require_once __DIR__ . '/../includes/security.php';
 
 // Include required files
-require_once '../config/database.php';
+require_once __DIR__ . '/../config/config.php';
 require_once '../includes/auth.php';
 
 // Require member login
@@ -35,7 +35,7 @@ if (!$event_id) {
 
 // Verify event exists and is upcoming
 $event = $db->fetchOne(
-    "SELECT * FROM EVENTS WHERE event_id = ?",
+    "SELECT * FROM events WHERE event_id = ?",
     [$event_id]
 );
 
@@ -43,9 +43,16 @@ if (!$event) {
     redirectWithMessage('events.php', 'Event not found', 'error');
 }
 
-// Check if event is in the past
-$event_date = strtotime($event['event_date']);
-if ($event_date < strtotime('today')) {
+// Check if event has ended (use start/end time when available)
+$current_datetime = new DateTime('now');
+$start_time = !empty($event['start_time']) ? $event['start_time'] : ($event['event_time'] ?? '00:00:00');
+$event_start = new DateTime($event['event_date'] . ' ' . $start_time);
+$end_time = !empty($event['end_time']) ? $event['end_time'] : date('H:i:s', strtotime($start_time . ' +2 hours'));
+$event_end = new DateTime($event['event_date'] . ' ' . $end_time);
+if ($event_end < $event_start) {
+    $event_end->modify('+1 day');
+}
+if ($current_datetime > $event_end) {
     redirectWithMessage('events.php', 'Cannot register for past events', 'error');
 }
 
@@ -57,8 +64,8 @@ if ($event['status'] === 'cancelled') {
 // CRITICAL: Check for pending feedback from attended events
 $pending_feedback = $db->fetchAll(
     "SELECT e.event_id, e.event_name, e.event_date
-     FROM MEMBER_EVENTS me
-     JOIN EVENTS e ON me.event_id = e.event_id
+     FROM member_events me
+     JOIN events e ON me.event_id = e.event_id
      WHERE me.member_id = ? 
      AND me.attendance_status = 'attended' 
      AND (me.feedback_rating IS NULL OR me.feedback_comment IS NULL OR me.feedback_comment = '')
@@ -76,7 +83,7 @@ if (count($pending_feedback) > 0) {
 
 // Check if already registered
 $existing_registration = $db->fetchOne(
-    "SELECT * FROM MEMBER_EVENTS WHERE event_id = ? AND member_id = ?",
+    "SELECT * FROM member_events WHERE event_id = ? AND member_id = ?",
     [$event_id, $member_id]
 );
 
@@ -87,7 +94,7 @@ if ($existing_registration) {
 // Check capacity if set
 if (!empty($event['capacity']) && $event['capacity'] > 0) {
     $current_registrations = $db->fetchOne(
-        "SELECT COUNT(*) as count FROM MEMBER_EVENTS WHERE event_id = ?",
+        "SELECT COUNT(*) as count FROM member_events WHERE event_id = ?",
         [$event_id]
     )['count'];
     
@@ -105,7 +112,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         // Insert registration
-        $query = "INSERT INTO MEMBER_EVENTS (member_id, event_id, attendance_status) 
+        $query = "INSERT INTO member_events (member_id, event_id, attendance_status) 
                   VALUES (?, ?, 'registered')";
         
         $db->query($query, [$member_id, $event_id]);
@@ -179,7 +186,18 @@ $csrf_token = generateCSRFToken();
                     <div class="col-md-6 mb-3">
                         <i class="fas fa-clock me-2"></i>
                         <strong>Time:</strong><br>
-                        <?php echo $event['event_time'] ? date('g:i A', strtotime($event['event_time'])) : 'TBA'; ?>
+                        <?php
+                            $display_start = $event['start_time'] ?? $event['event_time'] ?? null;
+                            $display_end = $event['end_time'] ?? null;
+                            if ($display_start) {
+                                echo date('g:i A', strtotime($display_start));
+                                if ($display_end) {
+                                    echo ' - ' . date('g:i A', strtotime($display_end));
+                                }
+                            } else {
+                                echo 'TBA';
+                            }
+                        ?>
                     </div>
                     <?php if ($event['location']): ?>
                         <div class="col-md-12 mb-3">

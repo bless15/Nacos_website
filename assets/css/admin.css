@@ -266,20 +266,142 @@ a:hover {
     100% { transform: rotate(360deg); }
 }
 
+/* Sidebar Styles */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 260px;
+    background: var(--sidebar-bg);
+    color: white;
+    overflow-y: auto;
+    transition: all 0.3s;
+    z-index: 1000;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
+}
+
+.sidebar-header {
+    padding: 20px;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    text-align: center;
+}
+
+.sidebar-header h4 {
+    margin: 10px 0 5px;
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.sidebar-header small {
+    opacity: 0.9;
+}
+
+.sidebar-menu {
+    padding: 20px 0;
+}
+
+.sidebar-menu a {
+    display: block;
+    padding: 12px 20px;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+.sidebar-menu a:hover,
+.sidebar-menu a.active {
+    background: var(--sidebar-hover);
+    color: white;
+    padding-left: 30px;
+}
+
+.sidebar-menu a i {
+    width: 25px;
+    margin-right: 10px;
+}
+
+/* Main Content */
+.main-content {
+    margin-left: 260px;
+    padding: 30px;
+    min-height: 100vh;
+    flex: 1;
+    width: calc(100% - 260px);
+}
+
+.wrapper {
+    display: flex;
+    width: 100%;
+}
+
+.container-fluid {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 999;
+}
+
 /* Responsive Design */
-@media (max-width: 768px) {
+@media (max-width: 992px) {
     .sidebar {
-        width: 0;
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        width: 260px;
         transform: translateX(-100%);
+        box-shadow: 6px 0 20px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s ease;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .sidebar-menu {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        min-height: 0;
+    }
+
+    .sidebar-bottom-links {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 12px;
+        margin-top: 0 !important;
+        padding-top: 12px;
+        padding-bottom: 0;
+        z-index: 2;
     }
     
-    .sidebar.active {
-        width: 260px;
+    .sidebar.show {
         transform: translateX(0);
     }
     
     .main-content {
         margin-left: 0;
+        padding: 15px;
+    }
+
+    .sidebar-backdrop {
+        display: none;
+    }
+
+    .sidebar-backdrop.show {
+        display: block;
+    }
+
+    .menu-toggle {
+        display: inline-flex !important;
     }
 }
 

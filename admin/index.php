@@ -9,12 +9,10 @@
  * ============================================
  */
 
-// Security gate
+// Bootstrap and security
+require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/security.php';
-
-// Include required files
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 // Require login
 requireAdminRole();
@@ -27,21 +25,21 @@ $db = getDB();
 
 try {
     // Total members count
-    $total_members = $db->fetchOne("SELECT COUNT(*) as count FROM MEMBERS WHERE membership_status = 'active'")['count'];
+    $total_members = $db->fetchOne("SELECT COUNT(*) as count FROM members WHERE membership_status = 'active'")['count'];
     
     // Total projects count
-    $total_projects = $db->fetchOne("SELECT COUNT(*) as count FROM PROJECTS WHERE project_status != 'archived'")['count'];
+    $total_projects = $db->fetchOne("SELECT COUNT(*) as count FROM projects WHERE project_status != 'archived'")['count'];
     
     // Upcoming events count
-    $upcoming_events = $db->fetchOne("SELECT COUNT(*) as count FROM EVENTS WHERE status = 'upcoming'")['count'];
+    $upcoming_events = $db->fetchOne("SELECT COUNT(*) as count FROM events WHERE status = 'upcoming'")['count'];
     
     // Active partners count
-    $active_partners = $db->fetchOne("SELECT COUNT(*) as count FROM PARTNERS WHERE status = 'active'")['count'];
+    $active_partners = $db->fetchOne("SELECT COUNT(*) as count FROM partners WHERE status = 'active'")['count'];
     
     // Recent members (last 5)
     $recent_members = $db->fetchAll(
         "SELECT member_id, full_name, department, level, registration_date 
-         FROM MEMBERS 
+         FROM members 
          ORDER BY registration_date DESC 
          LIMIT 5"
     );
@@ -49,7 +47,7 @@ try {
     // Featured projects
     $featured_projects = $db->fetchAll(
         "SELECT project_id, title, project_status, tech_stack 
-         FROM PROJECTS 
+         FROM projects 
          WHERE featured = 1 AND visibility = 'public'
          ORDER BY updated_at DESC 
          LIMIT 5"
@@ -58,7 +56,7 @@ try {
     // Upcoming events
     $events_list = $db->fetchAll(
         "SELECT event_id, event_name, event_date, event_type, location 
-         FROM EVENTS 
+         FROM events 
          WHERE status = 'upcoming' 
          ORDER BY event_date ASC 
          LIMIT 5"
@@ -67,7 +65,7 @@ try {
     // Department breakdown
     $dept_stats = $db->fetchAll(
         "SELECT department, COUNT(*) as count 
-         FROM MEMBERS 
+         FROM members 
          WHERE membership_status = 'active' 
          GROUP BY department 
          ORDER BY count DESC"
@@ -95,46 +93,75 @@ $flash = getFlashMessage();
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         :root {
-            --primary-color: #667eea;
-            --secondary-color: #764ba2;
-            --sidebar-bg: #2c3e50;
-            --sidebar-hover: #34495e;
+            --sidebar-width: 240px;
+            --purple-start: #5B6FD8;
+            --purple-end: #7E57C2;
+            --green-start: #26C281;
+            --green-end: #48E5A5;
+            --pink-start: #F093FB;
+            --pink-end: #F5576C;
+            --cyan-start: #4FC3F7;
+            --cyan-end: #29B6F6;
+            --sidebar-gradient: linear-gradient(180deg, #4A5BD8 0%, #7E57C2 100%);
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f8f9fa;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #F5F7FA;
+            color: #2D3748;
+            font-size: 14px;
+            transition: overflow 0.3s ease;
         }
         
-        /* Sidebar */
+        /* Modern Sidebar */
         .sidebar {
             position: fixed;
             top: 0;
             left: 0;
             height: 100vh;
-            width: 260px;
-            background: var(--sidebar-bg);
+            width: var(--sidebar-width);
+            background: var(--sidebar-gradient);
             color: white;
             overflow-y: auto;
-            transition: all 0.3s;
             z-index: 1000;
+            box-shadow: 4px 0 15px rgba(0, 0, 0, 0.1);
         }
         
         .sidebar-header {
-            padding: 20px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            padding: 28px 20px;
             text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-header img {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
         }
         
         .sidebar-header h4 {
-            margin: 10px 0 5px;
-            font-size: 20px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 4px 0;
+            color: white;
         }
         
         .sidebar-header small {
-            opacity: 0.9;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 500;
         }
         
         .sidebar-menu {
@@ -142,48 +169,83 @@ $flash = getFlashMessage();
         }
         
         .sidebar-menu a {
-            display: block;
-            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            padding: 12px 24px;
             color: rgba(255, 255, 255, 0.8);
             text-decoration: none;
             transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
+            border-left: 3px solid transparent;
         }
         
         .sidebar-menu a:hover,
         .sidebar-menu a.active {
-            background: var(--sidebar-hover);
+            background: rgba(255, 255, 255, 0.1);
             color: white;
-            padding-left: 30px;
+            border-left-color: white;
         }
         
         .sidebar-menu a i {
-            width: 25px;
-            margin-right: 10px;
+            width: 20px;
+            margin-right: 12px;
+            font-size: 16px;
+        }
+        
+        .sidebar-menu hr {
+            border-color: rgba(255, 255, 255, 0.1);
+            margin: 12px 24px;
         }
         
         /* Main Content */
         .main-content {
-            margin-left: 260px;
-            padding: 20px;
+            margin-left: var(--sidebar-width);
+            padding: 24px;
             min-height: 100vh;
+        }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            z-index: 900;
+            pointer-events: none;
         }
         
         /* Top Bar */
         .top-bar {
             background: white;
-            padding: 15px 25px;
+            padding: 18px 24px;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            margin-bottom: 25px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+            margin-bottom: 24px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
+
+        .menu-toggle {
+            display: none;
+            border: none;
+            background: transparent;
+            color: #4A5BD8;
+            font-size: 22px;
+            padding: 6px 10px;
+            border-radius: 8px;
+        }
+
+        .menu-toggle:focus {
+            outline: 2px solid rgba(74, 91, 216, 0.3);
+            outline-offset: 2px;
+        }
         
         .top-bar h3 {
             margin: 0;
-            color: #333;
-            font-size: 24px;
+            color: #2D3748;
+            font-size: 20px;
+            font-weight: 700;
         }
         
         .user-info {
@@ -192,147 +254,674 @@ $flash = getFlashMessage();
             gap: 15px;
         }
         
+        .user-info div {
+            text-align: right;
+        }
+
+        .user-info > div:first-child {
+            margin-top: 3px;
+        }
+        
+        .user-info strong {
+            display: block;
+            font-size: 15px;
+            font-weight: 600;
+            color: #2D3748;
+            line-height: 1.15;
+        }
+        
+        .user-info small {
+            display: block;
+            margin-top: 1px;
+            color: #718096;
+            font-size: 13px;
+            line-height: 1.15;
+        }
+        
         .user-avatar {
-            width: 40px;
-            height: 40px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(135deg, var(--purple-start), var(--purple-end));
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 18px;
         }
         
-        /* Stats Cards */
+        /* Gradient Stats Cards */
         .stats-card {
             background: white;
-            border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s, box-shadow 0.3s;
+            border-radius: 12px;
+            padding: 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s;
+            overflow: hidden;
+            height: 100%;
         }
         
         .stats-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
         
-        .stats-card .icon {
-            width: 60px;
-            height: 60px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
+        .stats-card-gradient {
+            padding: 20px;
             color: white;
-            margin-bottom: 15px;
+            position: relative;
+        }
+        
+        .stats-card-gradient.purple {
+            background: linear-gradient(135deg, var(--purple-start), var(--purple-end));
+        }
+        
+        .stats-card-gradient.green {
+            background: linear-gradient(135deg, var(--green-start), var(--green-end));
+        }
+        
+        .stats-card-gradient.pink {
+            background: linear-gradient(135deg, var(--pink-start), var(--pink-end));
+        }
+        
+        .stats-card-gradient.cyan {
+            background: linear-gradient(135deg, var(--cyan-start), var(--cyan-end));
+        }
+        
+        .stats-card-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+            opacity: 0.9;
         }
         
         .stats-card h3 {
             font-size: 32px;
             font-weight: 700;
-            margin: 0;
-            color: #333;
+            margin: 0 0 2px 0;
+            color: white;
         }
         
         .stats-card p {
-            margin: 5px 0 0;
-            color: #666;
-            font-size: 14px;
+            margin: 0;
+            font-size: 13px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.95);
         }
         
-        .bg-gradient-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+        .stats-card-footer {
+            padding: 10px 20px;
+            background: white;
+            border-top: 1px solid #E2E8F0;
         }
         
-        .bg-gradient-success {
-            background: linear-gradient(135deg, #11998e, #38ef7d);
+        .stats-card-footer a {
+            color: #4A5BD8;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         
-        .bg-gradient-warning {
-            background: linear-gradient(135deg, #f093fb, #f5576c);
-        }
-        
-        .bg-gradient-info {
-            background: linear-gradient(135deg, #4facfe, #00f2fe);
+        .stats-card-footer a:hover {
+            color: #3A4BC8;
         }
         
         /* Content Cards */
         .content-card {
             background: white;
             border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            margin-bottom: 25px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
         
         .content-card h5 {
-            margin-bottom: 20px;
-            font-weight: 600;
-            color: #333;
+            margin-bottom: 16px;
+            font-weight: 700;
+            color: #2D3748;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
+        .content-card h5 i {
+            color: #4A5BD8;
+        }
+        
+        .card-content {
+            flex: 1;
+            overflow: auto;
+        }
+        
+        /* Table Styling */
         .table {
             margin: 0;
         }
         
+        .table thead th {
+            border-bottom: 2px solid #E2E8F0;
+            color: #718096;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px;
+        }
+        
+        .table tbody td {
+            border-bottom: 1px solid #E2E8F0;
+            padding: 12px 10px;
+            color: #2D3748;
+            font-size: 13px;
+        }
+        
+        .table tbody tr:hover {
+            background: #F7FAFC;
+        }
+        
+        /* Modern Badges */
         .badge {
-            padding: 5px 10px;
-            border-radius: 5px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+        
+        .badge.bg-primary {
+            background: #26C281 !important;
+            color: white;
+        }
+        
+        .badge.bg-info {
+            background: #4FC3F7 !important;
+            color: white;
+        }
+        
+        .badge.bg-success {
+            background: #26C281 !important;
+            color: white;
+        }
+        
+        .badge.bg-warning {
+            background: #FFA726 !important;
+            color: white;
+        }
+        
+        .badge.bg-secondary {
+            background: #94A3B8 !important;
+            color: white;
+        }
+        
+        /* Buttons */
+        .btn-outline-primary {
+            border: 1px solid #4A5BD8;
+            color: #4A5BD8;
+            font-weight: 600;
+            font-size: 13px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .btn-outline-primary:hover {
+            background: #4A5BD8;
+            color: white;
+            border-color: #4A5BD8;
+            box-shadow: 0 2px 8px rgba(74, 91, 216, 0.25);
+        }
+        
+        /* Member Avatar */
+        .member-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--purple-start), var(--purple-end));
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 13px;
+            margin-right: 10px;
+        }
+        
+        .member-info {
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .member-name {
+            font-weight: 600;
+            color: #2D3748;
+        }
+        
+        .dept-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .dept-icon.cs {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        
+        .dept-icon.cyber {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+        }
+        
+        .dept-icon.software {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+        }
+        
+        .dept-icon.it {
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
+            color: white;
+        }
+        
+        /* Department Progress Bars */
+        .dept-progress {
+            height: 8px;
+            background: #E2E8F0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .dept-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--purple-start), var(--purple-end));
+            border-radius: 10px;
+            transition: width 0.6s ease;
+        }
+        
+        .dept-progress-bar.green {
+            background: linear-gradient(90deg, var(--green-start), var(--green-end));
+        }
+        
+        .dept-progress-bar.cyan {
+            background: linear-gradient(90deg, var(--cyan-start), var(--cyan-end));
+        }
+        
+        .dept-progress-bar.pink {
+            background: linear-gradient(90deg, var(--pink-start), var(--pink-end));
+        }
+        
+        .dept-row {
+            padding: 14px 0;
+            border-bottom: 1px solid #E2E8F0;
+            transition: background 0.3s;
+        }
+        
+        .dept-row:hover {
+            background: #F7FAFC;
+        }
+        
+        .dept-row:last-child {
+            border-bottom: none;
+        }
+        
+        .dept-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .dept-name {
+            flex: 1;
+            font-weight: 600;
+            color: #2D3748;
+            font-size: 13px;
+        }
+        
+        .dept-count {
+            font-size: 18px;
+            font-weight: 700;
+            color: #4A5BD8;
+        }
+        
+        .dept-percentage {
+            font-size: 11px;
+            color: #718096;
+            margin-left: 8px;
+        }
+        
+        /* Project Cards */
+        .project-item {
+            padding: 14px;
+            border: 1px solid #E2E8F0;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .project-item:hover {
+            border-color: #4A5BD8;
+            box-shadow: 0 4px 12px rgba(74, 91, 216, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .project-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .project-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--purple-start), var(--purple-end));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        
+        .project-title {
+            flex: 1;
+            font-weight: 600;
+            color: #2D3748;
+            font-size: 15px;
+            margin: 0;
+        }
+        
+        .project-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .project-status.ideation {
+            background: #E2E8F0;
+            color: #64748B;
+        }
+        
+        .project-status.in_progress {
+            background: #FEF3C7;
+            color: #D97706;
+        }
+        
+        .project-status.completed {
+            background: #D1FAE5;
+            color: #059669;
+        }
+        
+        .project-tech {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        
+        .tech-tag {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #F7FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            font-size: 11px;
+            color: #4A5BD8;
+            font-weight: 600;
+        }
+        
+        /* Alert */
+        .alert {
+            border-radius: 10px;
+            border: none;
+            padding: 16px 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        
+        /* Timeline Styles */
+        .timeline-container {
+            position: relative;
+            padding: 10px 0;
+        }
+        
+        .timeline-item {
+            position: relative;
+            padding-left: 65px;
+            padding-bottom: 24px;
+        }
+        
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+        
+        .timeline-item:not(:last-child)::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 52px;
+            bottom: -24px;
+            width: 2px;
+            background: linear-gradient(180deg, currentColor 0%, currentColor 100%);
+            opacity: 0.3;
+        }
+        
+        .timeline-icon {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        
+        .timeline-icon.cyan {
+            background: linear-gradient(135deg, #4FC3F7, #29B6F6);
+        }
+        
+        .timeline-icon.pink {
+            background: linear-gradient(135deg, #F093FB, #F5576C);
+        }
+        
+        .timeline-icon.purple {
+            background: linear-gradient(135deg, #5B6FD8, #7E57C2);
+        }
+        
+        .timeline-icon.green {
+            background: linear-gradient(135deg, #26C281, #48E5A5);
+        }
+        
+        .timeline-content {
+            background: #F7FAFC;
+            padding: 12px 14px;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+        
+        .timeline-content:hover {
+            background: #EDF2F7;
+            transform: translateX(5px);
+        }
+        
+        .timeline-date {
+            font-size: 12px;
+            color: #718096;
+            font-weight: 600;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+        }
+        
+        .timeline-title {
+            font-size: 15px;
+            color: #2D3748;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .timeline-type {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 4px 10px;
+            background: white;
+            border-radius: 12px;
+            font-size: 11px;
+            color: #4A5BD8;
+            font-weight: 600;
+        }
+        
+        /* Responsive */
+        @media (max-width: 991px) {
+            .main-content {
+                margin-left: 0;
+                padding: 16px;
+            }
+            .sidebar {
+                width: var(--sidebar-width);
+                height: 100vh;
+                position: fixed;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+            }
+            body.sidebar-open .sidebar {
+                transform: translateX(0);
+                box-shadow: 6px 0 20px rgba(0,0,0,0.18);
+            }
+            .sidebar-backdrop {
+                display: block;
+                opacity: 0;
+                transition: opacity 0.25s ease;
+            }
+            body.sidebar-open .sidebar-backdrop {
+                opacity: 1;
+                pointer-events: auto;
+            }
+            body.sidebar-open {
+                overflow: hidden;
+            }
+            .menu-toggle {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .top-bar {
+                gap: 12px;
+            }
+
+            .top-bar h3 {
+                display: none;
+            }
+
+            .stats-grid {
+                --bs-gutter-x: 0.75rem;
+                --bs-gutter-y: 0.75rem;
+            }
+
+            .stats-grid > [class*="col-"] {
+                width: 50%;
+                flex: 0 0 auto;
+            }
+
+            .stats-card {
+                padding: 12px;
+                border-radius: 12px;
+            }
+
+            .stats-card-gradient {
+                background: transparent !important;
+                color: inherit;
+                padding: 0;
+                display: grid;
+                grid-template-columns: 38px 1fr;
+                grid-template-areas:
+                    "icon value"
+                    "icon label";
+                align-items: center;
+                column-gap: 10px;
+                row-gap: 2px;
+            }
+
+            .stats-card-icon {
+                grid-area: icon;
+                width: 38px;
+                height: 38px;
+                border-radius: 9px;
+                margin-bottom: 0;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+            }
+
+            .stats-card-gradient.purple .stats-card-icon { background: linear-gradient(135deg, var(--purple-start), var(--purple-end)); }
+            .stats-card-gradient.green .stats-card-icon { background: linear-gradient(135deg, var(--green-start), var(--green-end)); }
+            .stats-card-gradient.pink .stats-card-icon { background: linear-gradient(135deg, var(--pink-start), var(--pink-end)); }
+            .stats-card-gradient.cyan .stats-card-icon { background: linear-gradient(135deg, var(--cyan-start), var(--cyan-end)); }
+
+            .stats-card h3 {
+                grid-area: value;
+                margin: 0;
+                font-size: 28px;
+                line-height: 1;
+                color: #2D3748;
+            }
+
+            .stats-card p {
+                grid-area: label;
+                margin: 0;
+                color: #6B7280;
+                font-size: 12px;
+                font-weight: 500;
+            }
+
+            .stats-card-footer {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="../assets/images/nacos_logo.jpg" alt="NACOS Logo" style="height: 60px; margin-bottom: 10px;">
-            <h4>NACOS Dashboard</h4>
-            <small>Admin Panel</small>
-        </div>
-        
-        <div class="sidebar-menu">
-            <a href="index.php" class="active">
-                <i class="fas fa-home"></i> Dashboard
-            </a>
-            <a href="members.php">
-                <i class="fas fa-users"></i> Members
-            </a>
-            <a href="projects.php">
-                <i class="fas fa-project-diagram"></i> Projects
-            </a>
-            <a href="events.php">
-                <i class="fas fa-calendar-alt"></i> Events
-            </a>
-            <a href="resources.php">
-                <i class="fas fa-book"></i> Resources
-            </a>
-            <a href="partners.php">
-                <i class="fas fa-handshake"></i> Partners
-            </a>
-            <a href="documents.php">
-                <i class="fas fa-folder"></i> Documents
-            </a>
-            <hr style="border-color: rgba(255,255,255,0.1);">
-            <a href="../public/index.php" target="_blank">
-                <i class="fas fa-external-link-alt"></i> View Public Site
-            </a>
-            <a href="logout.php">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
-    </div>
-    
+    <!-- Admin Sidebar (Dynamic with role-based permissions) -->
+    <?php require_once __DIR__ . '/includes/sidebar.php'; ?>
+
     <!-- Main Content -->
     <div class="main-content">
         <!-- Top Bar -->
         <div class="top-bar">
-            <h3><i class="fas fa-chart-line me-2"></i> Dashboard Overview</h3>
+            <div class="d-flex align-items-center gap-2">
+                <button class="menu-toggle" id="menuToggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h3 class="mb-0"><i class="fas fa-chart-line me-2"></i> Dashboard Overview</h3>
+            </div>
             <div class="user-info">
                 <div>
-                    <strong><?php echo htmlspecialchars($current_user['full_name']); ?></strong><br>
+                    <strong><?php echo htmlspecialchars($current_user['full_name']); ?></strong>
                     <small class="text-muted"><?php echo ucfirst($current_user['role']); ?></small>
                 </div>
                 <div class="user-avatar">
@@ -351,41 +940,69 @@ $flash = getFlashMessage();
         <?php endif; ?>
         
         <!-- Stats Cards -->
-        <div class="row mb-4">
-            <div class="col-md-3">
+        <div class="row mb-3 g-3 stats-grid">
+            <div class="col-lg-3 col-md-6">
                 <div class="stats-card">
-                    <div class="icon bg-gradient-primary">
-                        <i class="fas fa-users"></i>
+                    <div class="stats-card-gradient purple">
+                        <div class="stats-card-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <h3><?php echo number_format($total_members); ?></h3>
+                        <p>Active Members</p>
                     </div>
-                    <h3><?php echo number_format($total_members); ?></h3>
-                    <p>Active Members</p>
+                    <div class="stats-card-footer">
+                        <a href="members.php">
+                            <i class="fas fa-users"></i> View Members
+                        </a>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-lg-3 col-md-6">
                 <div class="stats-card">
-                    <div class="icon bg-gradient-success">
-                        <i class="fas fa-project-diagram"></i>
+                    <div class="stats-card-gradient green">
+                        <div class="stats-card-icon">
+                            <i class="fas fa-project-diagram"></i>
+                        </div>
+                        <h3><?php echo number_format($total_projects); ?></h3>
+                        <p>Active Projects</p>
                     </div>
-                    <h3><?php echo number_format($total_projects); ?></h3>
-                    <p>Active Projects</p>
+                    <div class="stats-card-footer">
+                        <a href="projects.php">
+                            <i class="fas fa-folder-open"></i> View Projects
+                        </a>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-lg-3 col-md-6">
                 <div class="stats-card">
-                    <div class="icon bg-gradient-warning">
-                        <i class="fas fa-calendar-check"></i>
+                    <div class="stats-card-gradient pink">
+                        <div class="stats-card-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <h3><?php echo number_format($upcoming_events); ?></h3>
+                        <p>Upcoming Events</p>
                     </div>
-                    <h3><?php echo number_format($upcoming_events); ?></h3>
-                    <p>Upcoming Events</p>
+                    <div class="stats-card-footer">
+                        <a href="events.php">
+                            <i class="fas fa-calendar-check"></i> View Events
+                        </a>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-lg-3 col-md-6">
                 <div class="stats-card">
-                    <div class="icon bg-gradient-info">
-                        <i class="fas fa-handshake"></i>
+                    <div class="stats-card-gradient cyan">
+                        <div class="stats-card-icon">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                        <h3><?php echo number_format($active_partners); ?></h3>
+                        <p>Active Partners</p>
                     </div>
-                    <h3><?php echo number_format($active_partners); ?></h3>
-                    <p>Active Partners</p>
+                    <div class="stats-card-footer">
+                        <a href="partners.php">
+                            <i class="fas fa-handshake"></i> View >
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -393,60 +1010,73 @@ $flash = getFlashMessage();
         <!-- Content Row -->
         <div class="row">
             <!-- Recent Members -->
-            <div class="col-md-6">
+            <div class="col-lg-6 mb-3">
                 <div class="content-card">
                     <h5><i class="fas fa-user-plus me-2"></i> Recent Members</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Department</th>
-                                    <th>Level</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($recent_members as $member): ?>
+                    <div class="card-content">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
                                     <tr>
-                                        <td><?php echo htmlspecialchars($member['full_name']); ?></td>
-                                        <td><?php echo htmlspecialchars($member['department']); ?></td>
-                                        <td><span class="badge bg-primary"><?php echo $member['level']; ?>L</span></td>
-                                        <td><?php echo date('M d', strtotime($member['registration_date'])); ?></td>
+                                        <th>Member</th>
+                                        <th>Department</th>
+                                        <th>Level</th>
+                                        <th>Joined</th>
                                     </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($recent_members as $member): ?>
+                                        <tr>
+                                            <td>
+                                                <div class="member-info">
+                                                    <div class="member-avatar">
+                                                        <?php echo strtoupper(substr($member['full_name'], 0, 1)); ?>
+                                                    </div>
+                                                    <span class="member-name"><?php echo htmlspecialchars($member['full_name']); ?></span>
+                                                </div>
+                                            </td>
+                                            <td><?php echo htmlspecialchars($member['department']); ?></td>
+                                            <td><span class="badge bg-primary"><?php echo (int)$member['level']; ?>L</span></td>
+                                            <td style="color: #718096; font-size: 13px;"><?php echo date('M d, Y', strtotime($member['registration_date'])); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                    <a href="members.php" class="btn btn-sm btn-outline-primary">View All Members <i class="fas fa-arrow-right ms-1"></i></a>
+                    <a href="members.php" class="btn btn-sm btn-outline-primary mt-2">View All Members →</a>
                 </div>
             </div>
             
-            <!-- Upcoming Events -->
-            <div class="col-md-6">
+            <!-- Upcoming Events Timeline -->
+            <div class="col-lg-6 mb-3">
                 <div class="content-card">
-                    <h5><i class="fas fa-calendar-alt me-2"></i> Upcoming Events</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Event</th>
-                                    <th>Type</th>
-                                    <th>Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($events_list as $event): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($event['event_name']); ?></td>
-                                        <td><span class="badge bg-info"><?php echo ucfirst($event['event_type']); ?></span></td>
-                                        <td><?php echo date('M d, Y', strtotime($event['event_date'])); ?></td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                    <h5><i class="fas fa-calendar-alt me-2"></i> Upcoming Events Timeline</h5>
+                    <div class="card-content">
+                        <div class="timeline-container">
+                            <?php 
+                            $timeline_colors = ['cyan', 'pink', 'purple', 'green'];
+                            $timeline_icons = ['fa-laptop-code', 'fa-python', 'fa-calendar', 'fa-graduation-cap'];
+                            $color_index = 0;
+                            foreach ($events_list as $event): 
+                                $color = $timeline_colors[$color_index % count($timeline_colors)];
+                                $icon = $timeline_icons[$color_index % count($timeline_icons)];
+                                $color_index++;
+                            ?>
+                                <div class="timeline-item" style="color: var(--<?php echo $color; ?>-start);">
+                                    <div class="timeline-icon <?php echo $color; ?>">
+                                        <i class="fas <?php echo $icon; ?>"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-date"><?php echo date('M d', strtotime($event['event_date'])); ?></div>
+                                        <h6 class="timeline-title"><?php echo htmlspecialchars($event['event_name']); ?></h6>
+                                        <span class="timeline-type"><?php echo ucfirst($event['event_type']); ?></span>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
-                    <a href="events.php" class="btn btn-sm btn-outline-primary">View All Events <i class="fas fa-arrow-right ms-1"></i></a>
+                    <a href="events.php" class="btn btn-sm btn-outline-primary mt-2">View All Events →</a>
                 </div>
             </div>
         </div>
@@ -454,62 +1084,85 @@ $flash = getFlashMessage();
         <!-- Department Stats & Projects -->
         <div class="row">
             <!-- Department Breakdown -->
-            <div class="col-md-6">
+            <div class="col-lg-6 mb-3">
                 <div class="content-card">
                     <h5><i class="fas fa-chart-pie me-2"></i> Members by Department</h5>
-                    <div class="table-responsive">
-                        <table class="table">
-                            <tbody>
-                                <?php foreach ($dept_stats as $dept): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($dept['department']); ?></td>
-                                        <td class="text-end">
-                                            <strong><?php echo number_format($dept['count']); ?></strong>
-                                            <small class="text-muted">members</small>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                    <div class="card-content">
+                        <?php 
+                        $progress_colors = ['purple', 'green', 'cyan', 'pink'];
+                        $dept_icons = [
+                            'Computer Science' => 'fa-laptop-code',
+                            'Cyber Security' => 'fa-shield-alt',
+                            'Software Engineering' => 'fa-code',
+                            'Information Technology' => 'fa-server'
+                        ];
+                        $color_idx = 0;
+                        foreach ($dept_stats as $dept): 
+                            $percentage = ($dept['count'] / $total_members) * 100;
+                            $color = $progress_colors[$color_idx % count($progress_colors)];
+                            $icon = $dept_icons[$dept['department']] ?? 'fa-users';
+                            $color_idx++;
+                        ?>
+                            <div class="dept-row">
+                                <div class="dept-header">
+                                    <div class="dept-icon <?php echo strtolower(str_replace(' ', '', $dept['department'])); ?>">
+                                        <i class="fas <?php echo $icon; ?>"></i>
+                                    </div>
+                                    <div class="dept-name"><?php echo htmlspecialchars($dept['department']); ?></div>
+                                    <div class="dept-count"><?php echo number_format($dept['count']); ?></div>
+                                    <span class="dept-percentage"><?php echo number_format($percentage, 1); ?>%</span>
+                                </div>
+                                <div class="dept-progress">
+                                    <div class="dept-progress-bar <?php echo $color; ?>" style="width: <?php echo $percentage; ?>%;"></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
             </div>
             
             <!-- Featured Projects -->
-            <div class="col-md-6">
+            <div class="col-lg-6 mb-3">
                 <div class="content-card">
                     <h5><i class="fas fa-star me-2"></i> Featured Projects</h5>
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Project</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($featured_projects as $project): ?>
-                                    <tr>
-                                        <td><?php echo htmlspecialchars($project['title']); ?></td>
-                                        <td>
-                                            <?php 
-                                            $status_color = [
-                                                'ideation' => 'secondary',
-                                                'in_progress' => 'warning',
-                                                'completed' => 'success'
-                                            ];
-                                            $color = $status_color[$project['project_status']] ?? 'secondary';
-                                            ?>
-                                            <span class="badge bg-<?php echo $color; ?>">
-                                                <?php echo ucfirst(str_replace('_', ' ', $project['project_status'])); ?>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                    <div class="card-content">
+                        <?php 
+                        $status_icons = [
+                            'ideation' => 'fa-lightbulb',
+                            'in_progress' => 'fa-spinner',
+                            'completed' => 'fa-check-circle'
+                        ];
+                        foreach ($featured_projects as $project): 
+                            $status_icon = $status_icons[$project['project_status']] ?? 'fa-circle';
+                            $tech_array = !empty($project['tech_stack']) ? explode(',', $project['tech_stack']) : [];
+                        ?>
+                            <div class="project-item">
+                                <div class="project-header">
+                                    <div class="project-icon">
+                                        <i class="fas fa-code"></i>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <h6 class="project-title"><?php echo htmlspecialchars($project['title']); ?></h6>
+                                        <span class="project-status <?php echo $project['project_status']; ?>">
+                                            <i class="fas <?php echo $status_icon; ?>"></i>
+                                            <?php echo ucfirst(str_replace('_', ' ', $project['project_status'])); ?>
+                                        </span>
+                                    </div>
+                                </div>
+                                <?php if (!empty($tech_array)): ?>
+                                    <div class="project-tech">
+                                        <?php foreach (array_slice($tech_array, 0, 4) as $tech): ?>
+                                            <span class="tech-tag"><?php echo htmlspecialchars(trim($tech)); ?></span>
+                                        <?php endforeach; ?>
+                                        <?php if (count($tech_array) > 4): ?>
+                                            <span class="tech-tag">+<?php echo count($tech_array) - 4; ?> more</span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
-                    <a href="projects.php" class="btn btn-sm btn-outline-primary">View All Projects <i class="fas fa-arrow-right ms-1"></i></a>
+                    <a href="projects.php" class="btn btn-sm btn-outline-primary mt-2">View All Projects →</a>
                 </div>
             </div>
         </div>
@@ -535,6 +1188,30 @@ $flash = getFlashMessage();
                 if (closeBtn) closeBtn.click();
             });
         }, 5000);
+
+        // Sidebar toggle for small screens
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
+        const closeSidebar = () => {
+            document.body.classList.remove('sidebar-open');
+            if (menuToggle) menuToggle.setAttribute('aria-expanded', 'false');
+        };
+
+        if (menuToggle) {
+            menuToggle.addEventListener('click', () => {
+                const open = !document.body.classList.contains('sidebar-open');
+                document.body.classList.toggle('sidebar-open', open);
+                menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            });
+        }
+        if (sidebarBackdrop) {
+            sidebarBackdrop.addEventListener('click', closeSidebar);
+        }
+
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', closeSidebar);
+        });
     </script>
 </body>
 </html>

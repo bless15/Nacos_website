@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================
- * NACOS DASHBOARD - MEMBERS MANAGEMENT
+ * NACOS DASHBOARD - members MANAGEMENT
  * ============================================
  * Purpose: View, search, filter, and manage all members
  * Access: Requires authentication
@@ -12,12 +12,12 @@
 // Security gate
 require_once __DIR__ . '/../includes/security.php';
 
-// Include required files
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/auth.php';
 
-// Require login
-requireAdminRole();
+// Require full admin privileges
+requireFullAdminRole();
 
 // Get current user
 $current_user = getCurrentMember();
@@ -33,11 +33,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     // current admin id (who performs the approval)
     $admin_id = getCurrentMember()['member_id'] ?? null;
 
+    // Verify admin exists in database if we have an ID
+    $approved_by = null;
+    if ($admin_id) {
+        $admin_exists = $db->fetchOne("SELECT member_id FROM members WHERE member_id = ?", [$admin_id]);
+        if ($admin_exists) {
+            $approved_by = $admin_id;
+        }
+    }
+
     if ($action === 'approve') {
         try {
             // Approve member: set both membership_status and is_approved, record approver and timestamp
-            $query = "UPDATE MEMBERS SET membership_status = 'active', is_approved = 1, approved_by = ?, approval_date = NOW() WHERE member_id = ?";
-            $db->query($query, [$admin_id, $member_id]);
+            $query = "UPDATE members SET membership_status = 'active', is_approved = 1, approved_by = ?, approval_date = NOW() WHERE member_id = ?";
+            $db->query($query, [$approved_by, $member_id]);
             $_SESSION['flash_message'] = "Member approved successfully! They can now log in to access the dashboard.";
             $_SESSION['flash_type'] = 'success';
             logSecurityEvent("Admin approved member ID: $member_id by admin ID: $admin_id", 'info');
@@ -52,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     } elseif ($action === 'reject') {
         try {
             // Reject member: mark inactive and clear approval flags (or delete if preferred)
-            $query = "UPDATE MEMBERS SET membership_status = 'inactive', is_approved = 0 WHERE member_id = ?";
+            $query = "UPDATE members SET membership_status = 'inactive', is_approved = 0 WHERE member_id = ?";
             $db->query($query, [$member_id]);
             $_SESSION['flash_message'] = "Member rejected. Account has been set to inactive.";
             $_SESSION['flash_type'] = 'error';
@@ -124,14 +133,14 @@ if (!in_array($sort_by, $allowed_sort)) {
 }
 
 // Get total count
-$count_query = "SELECT COUNT(*) as total FROM MEMBERS $where_clause";
+$count_query = "SELECT COUNT(*) as total FROM members $where_clause";
 $total_members = $db->fetchOne($count_query, $params)['total'];
 $total_pages = ceil($total_members / $items_per_page);
 
 // Get members
 $members_query = "SELECT member_id, matric_no, full_name, email, department, level, 
                          membership_status, registration_date, phone, is_approved
-                  FROM MEMBERS 
+                  FROM members 
                   $where_clause 
                   ORDER BY $sort_by $sort_order 
                   LIMIT $items_per_page OFFSET $offset";
@@ -139,16 +148,16 @@ $members_query = "SELECT member_id, matric_no, full_name, email, department, lev
 $members = $db->fetchAll($members_query, $params);
 
 // Get filter options
-$departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY department");
+$departments = $db->fetchAll("SELECT DISTINCT department FROM members ORDER BY department");
 $levels = ['100', '200', '300', '400'];
 $statuses = ['active', 'inactive', 'pending', 'alumni'];
 
 // Get statistics
 $stats = [
-    'total' => $db->fetchOne("SELECT COUNT(*) as count FROM MEMBERS")['count'],
-    'active' => $db->fetchOne("SELECT COUNT(*) as count FROM MEMBERS WHERE membership_status = 'active'")['count'],
-    'inactive' => $db->fetchOne("SELECT COUNT(*) as count FROM MEMBERS WHERE membership_status = 'inactive'")['count'],
-    'pending' => $db->fetchOne("SELECT COUNT(*) as count FROM MEMBERS WHERE is_approved = 0")['count'],
+    'total' => $db->fetchOne("SELECT COUNT(*) as count FROM members")['count'],
+    'active' => $db->fetchOne("SELECT COUNT(*) as count FROM members WHERE membership_status = 'active'")['count'],
+    'inactive' => $db->fetchOne("SELECT COUNT(*) as count FROM members WHERE membership_status = 'inactive'")['count'],
+    'pending' => $db->fetchOne("SELECT COUNT(*) as count FROM members WHERE is_approved = 0")['count'],
 ];
 
 // Get flash message
@@ -161,24 +170,40 @@ $flash = getFlashMessage();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Members Management - NACOS Dashboard</title>
     <link rel="icon" href="../assets/images/favicon.png" type="image/png">
-    
-    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
     <style>
         :root {
             --primary-color: #667eea;
             --secondary-color: #764ba2;
             --sidebar-bg: #2c3e50;
             --sidebar-hover: #34495e;
+            --success-start: #11998e;
+            --success-end: #38ef7d;
+            --danger-start: #f093fb;
+            --danger-end: #f5576c;
+            --warning-start: #fa709a;
+            --warning-end: #fee140;
+        }
+
+        * {
+            box-sizing: border-box;
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f8f9fa;
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.35);
+            z-index: 900;
+            pointer-events: none;
         }
         
         /* Sidebar */
@@ -192,6 +217,7 @@ $flash = getFlashMessage();
             color: white;
             overflow-y: auto;
             z-index: 1000;
+            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
         }
         
         .sidebar-header {
@@ -229,113 +255,240 @@ $flash = getFlashMessage();
         /* Main Content */
         .main-content {
             margin-left: 260px;
-            padding: 20px;
-            min-height: 100vh;
+            padding: 30px;
+            min-height: auto;
+            flex: 1 0 auto;
         }
         
         /* Top Bar */
         .top-bar {
             background: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            margin-bottom: 25px;
+            padding: 25px 30px;
+            border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            animation: fadeInDown 0.9s ease;
+        }
+        
+        .top-bar h3 {
+            color: #2c3e50;
+            font-weight: 700;
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-right-icon {
+            display: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            align-items: center;
+            justify-content: center;
+            background: rgba(102,126,234,0.08);
+            color: var(--primary-color);
+            font-size: 18px;
+        }
+        
+        .btn {
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+            color: white;
         }
         
         /* Stats Cards */
         .stats-mini {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
         }
         
         .stat-card-mini {
             background: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            flex: 1;
+            padding: 14px 16px;
+            border-radius: 12px;
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.07);
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 13px;
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.9s ease backwards;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card-mini:nth-child(1) { animation-delay: 0.15s; }
+        .stat-card-mini:nth-child(2) { animation-delay: 0.30s; }
+        .stat-card-mini:nth-child(3) { animation-delay: 0.45s; }
+        .stat-card-mini:nth-child(4) { animation-delay: 0.60s; }
+        
+        .stat-card-mini:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.11);
+        }
+        
+        .stat-card-mini::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        }
+        
+        .stat-card-mini:nth-child(2)::before {
+            background: linear-gradient(135deg, var(--success-start), var(--success-end));
+        }
+        
+        .stat-card-mini:nth-child(3)::before {
+            background: linear-gradient(135deg, var(--danger-start), var(--danger-end));
+        }
+        
+        .stat-card-mini:nth-child(4)::before {
+            background: linear-gradient(135deg, var(--warning-start), var(--warning-end));
         }
         
         .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            border-radius: 9px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 16px;
             color: white;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card-mini:hover .stat-icon {
+            transform: scale(1.1) rotate(5deg);
         }
         
         .stat-info h4 {
             margin: 0;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
+            color: #2c3e50;
+            line-height: 1.2;
         }
         
         .stat-info p {
-            margin: 0;
-            color: #666;
-            font-size: 14px;
+            margin: 2px 0 0;
+            color: #6c757d;
+            font-size: 12px;
         }
         
         /* Filters */
         .filters-card {
             background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            margin-bottom: 20px;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+            animation: fadeInUp 0.9s ease backwards;
+            animation-delay: 0.75s;
         }
+
+        .mobile-filter-toggle { display: none; }
+        .mobile-collapsible { display: block; }
         
         .filters-row {
-            display: flex;
-            gap: 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
             align-items: end;
-            flex-wrap: wrap;
         }
         
         .filter-group {
-            flex: 1;
-            min-width: 200px;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .filter-dropdown .btn {
+            width: 100%;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .filter-dropdown .dropdown-menu {
+            width: 100%;
+            max-height: 260px;
+            overflow-y: auto;
         }
         
         .filter-group label {
-            display: block;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
             font-weight: 600;
-            color: #333;
+            color: #2c3e50;
             font-size: 14px;
         }
         
         .filter-group input,
         .filter-group select {
             width: 100%;
-            padding: 8px 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
+            min-width: 0;
+            padding: 12px 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
             font-size: 14px;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
         }
         
         .filter-group input:focus,
         .filter-group select:focus {
             outline: none;
             border-color: var(--primary-color);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn-outline-secondary {
+            border: 2px solid #6c757d;
+            color: #6c757d;
+            background: transparent;
+        }
+        
+        .btn-outline-secondary:hover {
+            background: #6c757d;
+            color: white;
+            transform: translateY(-2px);
         }
         
         /* Table */
         .table-card {
             background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
             overflow: hidden;
+            animation: fadeInUp 0.9s ease backwards;
+            animation-delay: 0.95s;
         }
         
         .table {
@@ -349,49 +502,186 @@ $flash = getFlashMessage();
         
         .table thead th {
             border: none;
-            padding: 15px;
+            padding: 18px 20px;
             font-weight: 600;
             white-space: nowrap;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .table thead th a {
             color: white;
             text-decoration: none;
+            transition: all 0.3s ease;
         }
         
         .table thead th a:hover {
+            opacity: 0.9;
             text-decoration: underline;
         }
         
         .table tbody td {
-            padding: 12px 15px;
+            padding: 16px 20px;
             vertical-align: middle;
+            font-size: 14px;
+            color: #495057;
+        }
+        
+        .table tbody tr {
+            transition: all 0.3s ease;
+            border-bottom: 1px solid #f0f0f0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .table tbody tr.dropdown-open-row {
+            z-index: 30;
         }
         
         .table tbody tr:hover {
-            background: #f8f9fa;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            transform: scale(1.01);
+        }
+        
+        .table tbody tr:last-child {
+            border-bottom: none;
         }
         
         .badge {
-            padding: 5px 10px;
-            border-radius: 5px;
+            padding: 6px 12px;
+            border-radius: 8px;
             font-size: 12px;
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
-        .btn-action {
-            padding: 5px 10px;
-            font-size: 12px;
-            border-radius: 5px;
-            margin: 0 2px;
+        .badge.bg-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+        }
+        
+        .badge.bg-success {
+            background: linear-gradient(135deg, var(--success-start), var(--success-end)) !important;
+        }
+        
+        .badge.bg-danger {
+            background: linear-gradient(135deg, var(--danger-start), var(--danger-end)) !important;
+        }
+        
+        .badge.bg-warning {
+            background: linear-gradient(135deg, var(--warning-start), var(--warning-end)) !important;
+        }
+        
+        .badge.bg-info {
+            background: linear-gradient(135deg, #4facfe, #00f2fe) !important;
+        }
+        
+        .badge.bg-secondary {
+            background: linear-gradient(135deg, #6c757d, #495057) !important;
+        }
+        
+        /* Action dropdown button */
+        .action-menu-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border-radius: 9px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            transition: all 0.18s ease;
+        }
+
+        .action-menu-btn:hover,
+        .action-menu-btn:focus,
+        .action-menu-btn:active,
+        .action-menu-btn.show {
+            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
+            color: white !important;
+            box-shadow: 0 4px 14px rgba(102, 126, 234, 0.28);
+            transform: translateY(-1px);
+        }
+
+        /* Hide default Bootstrap caret */
+        .action-menu-btn::after { display: none; }
+
+        .action-dropdown-menu {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+            padding: 6px;
+            min-width: 165px;
+        }
+
+        .action-dropdown-menu .dropdown-item {
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background 0.18s ease;
+        }
+
+        .action-dropdown-menu .dropdown-item:hover {
+            background: rgba(102, 126, 234, 0.06);
+        }
+
+        .action-dropdown-menu .dropdown-item.text-danger:hover {
+            background: rgba(245, 87, 108, 0.08);
+        }
+
+        .action-dropdown-menu .dropdown-item.text-success:hover {
+            background: rgba(17, 153, 142, 0.08);
+        }
+
+        /* Form inside dropdown item */
+        .action-dropdown-menu form {
+            margin: 0;
+            padding: 0;
+        }
+
+        .action-dropdown-menu form .dropdown-item {
+            width: 100%;
+            background: none;
+            border: none;
+            text-align: left;
+            cursor: pointer;
+            display: block;
+        }
+
+        /* Force all inline action buttons in table to match stat icon size */
+        .table tbody td a.btn,
+        .table tbody td button.btn,
+        .table tbody td .btn-action {
+            width: 40px !important;
+            height: 40px !important;
+            padding: 0 !important;
+            border-radius: 9px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 14px !important;
+            margin: 4px 0 !important;
+        }
+
+        .table tbody td a.btn i.fas,
+        .table tbody td button.btn i.fas {
+            font-size: 16px !important;
+            line-height: 1 !important;
         }
         
         /* Pagination */
         .pagination-wrapper {
-            padding: 20px;
+            padding: 25px 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
         }
         
         .pagination {
@@ -400,60 +690,189 @@ $flash = getFlashMessage();
         
         .page-link {
             color: var(--primary-color);
+            border-radius: 8px;
+            margin: 0 3px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .page-link:hover {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
         }
         
         .page-item.active .page-link {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             border-color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        /* Flash Messages */
+        .alert {
+            border-radius: 12px;
+            border: none;
+            padding: 15px 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            animation: fadeInDown 0.5s ease;
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, rgba(17, 153, 142, 0.1), rgba(56, 239, 125, 0.1));
+            border-left: 5px solid var(--success-start);
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.1), rgba(245, 87, 108, 0.1));
+            border-left: 5px solid var(--danger-start);
+        }
+        
+        .alert-info {
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.1), rgba(0, 242, 254, 0.1));
+            border-left: 5px solid #4facfe;
+        }
+        
+        /* Footer */
+        footer {
+            margin-left: 260px;
+            background: white !important;
+            border-radius: 16px 16px 0 0;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.05);
+            margin-top: auto !important;
+        }
+
+        footer.mt-5 {
+            margin-top: auto !important;
+        }
+        
+        /* Empty State */
+        .table tbody td i.fa-users {
+            opacity: 0.3;
+        }
+        
+        /* Animations */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 991px) {
+            .menu-toggle { display: inline-flex; align-items: center; justify-content: center; }
+            .main-content { margin-left: 0; padding: 15px; min-height: auto; }
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; }
+            body.sidebar-open .sidebar { transform: translateX(0); }
+            .sidebar-backdrop { display: block; opacity: 0; transition: opacity 0.25s ease; }
+            body.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
+            body.sidebar-open { overflow: hidden; }
+            .stats-mini { grid-template-columns: repeat(2, 1fr); }
+            .filters-row { grid-template-columns: 1fr; }
+            footer { margin-left: 0; }
+            footer.mt-5 { margin-top: 1rem !important; }
+
+            .page-header-row {
+                flex-direction: column;
+                align-items: stretch !important;
+                gap: 12px;
+            }
+
+            .header-left {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .header-left h3 {
+                display: none;
+            }
+
+            .header-right-icon {
+                display: inline-flex;
+            }
+
+            .top-bar .btn-primary {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .mobile-filter-toggle {
+                display: flex;
+                width: 100%;
+                align-items: center;
+                justify-content: space-between;
+                margin-bottom: 10px;
+            }
+
+            .mobile-collapsible { display: none; }
+            .mobile-collapsible.show { display: block; }
+        }
+        
+        @media (max-width: 480px) {
+            .header-left {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .top-bar .btn-primary {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+        /* Compact hamburger styling to match design (small, subtle rounded icon) */
+        .menu-toggle {
+            background: rgba(102,126,234,0.06);
+            border: none;
+            color: var(--primary-color);
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            box-shadow: none;
+            font-size: 18px;
+        }
+
+        .menu-toggle i { font-size: 18px; line-height: 1; }
+
+        .menu-toggle:focus { outline: 2px solid rgba(102,126,234,0.18); outline-offset: 2px; }
+
+        .header-left .menu-toggle { margin-right: 8px; }
+
+        @media (max-width: 991px) {
+            .menu-toggle { display: inline-flex; }
         }
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="../assets/images/nacos_logo.jpg" alt="NACOS Logo" style="height: 60px; margin-bottom: 10px;">
-            <h4>NACOS Dashboard</h4>
-            <small>Admin Panel</small>
-        </div>
-        
-        <div class="sidebar-menu">
-            <a href="index.php">
-                <i class="fas fa-home"></i> Dashboard
-            </a>
-            <a href="members.php" class="active">
-                <i class="fas fa-users"></i> Members
-            </a>
-            <a href="projects.php">
-                <i class="fas fa-project-diagram"></i> Projects
-            </a>
-            <a href="events.php">
-                <i class="fas fa-calendar-alt"></i> Events
-            </a>
-            <a href="resources.php">
-                <i class="fas fa-book"></i> Resources
-            </a>
-            <a href="partners.php">
-                <i class="fas fa-handshake"></i> Partners
-            </a>
-            <a href="documents.php">
-                <i class="fas fa-folder"></i> Documents
-            </a>
-            <hr style="border-color: rgba(255,255,255,0.1);">
-            <a href="../public/index.php" target="_blank">
-                <i class="fas fa-external-link-alt"></i> View Public Site
-            </a>
-            <a href="logout.php">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
-    </div>
+    <?php require_once __DIR__ . '/includes/sidebar.php'; ?>
     
     <!-- Main Content -->
     <div class="main-content">
         <!-- Top Bar -->
-        <div class="top-bar">
-            <h3><i class="fas fa-users me-2"></i> Members Management</h3>
+        <div class="top-bar page-header-row">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle" type="button" aria-label="Toggle navigation" aria-expanded="false"><i class="fas fa-bars"></i></button>
+                <h3><i class="fas fa-users me-2"></i> Members Management</h3>
+                <span class="header-right-icon" aria-hidden="true"><i class="fas fa-users"></i></span>
+            </div>
             <a href="add_member.php" class="btn btn-primary">
                 <i class="fas fa-plus me-2"></i> Add New Member
             </a>
@@ -509,7 +928,12 @@ $flash = getFlashMessage();
         </div>
         
         <!-- Filters -->
-        <div class="filters-card">
+        <button type="button" class="btn btn-outline-primary mobile-filter-toggle" id="mobileFilterToggle" aria-expanded="false" aria-controls="mobileFilterCard">
+            <span><i class="fas fa-filter me-2"></i>Filter Members</span>
+            <i class="fas fa-chevron-down" id="mobileFilterChevron"></i>
+        </button>
+
+        <div class="filters-card mobile-collapsible" id="mobileFilterCard">
             <form method="GET" action="members.php" id="filterForm">
                 <div class="filters-row">
                     <div class="filter-group">
@@ -615,7 +1039,7 @@ $flash = getFlashMessage();
                                     Registered <?php if ($sort_by === 'registration_date') echo $sort_order === 'asc' ? '↑' : '↓'; ?>
                                 </a>
                             </th>
-                            <th>Actions</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -657,37 +1081,53 @@ $flash = getFlashMessage();
                                         </span>
                                     </td>
                                     <td><?php echo date('M d, Y', strtotime($member['registration_date'])); ?></td>
-                                    <td>
-                                        <?php if (isset($member['is_approved']) && !$member['is_approved']): ?>
-                                            <form method="POST" class="confirm-action-form" data-message="Are you sure you want to approve this member?" style="display: inline;">
-                                                <input type="hidden" name="action" value="approve">
-                                                <input type="hidden" name="member_id" value="<?php echo $member['member_id']; ?>">
-                                                <button type="submit" class="btn btn-sm btn-success btn-action" title="Approve Member">
-                                                    <i class="fas fa-check"></i>
-                                                </button>
-                                            </form>
-                                            <form method="POST" class="confirm-action-form" data-message="Are you sure you want to reject this member?" style="display: inline;">
-                                                <input type="hidden" name="action" value="reject">
-                                                <input type="hidden" name="member_id" value="<?php echo $member['member_id']; ?>">
-                                                <button type="submit" class="btn btn-sm btn-danger btn-action" title="Reject Member">
-                                                    <i class="fas fa-times"></i>
-                                                </button>
-                                            </form>
-                                        <?php endif; ?>
-                                        <a href="view_member.php?id=<?php echo $member['member_id']; ?>" 
-                                           class="btn btn-sm btn-info btn-action" title="View Details">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a href="edit_member.php?id=<?php echo $member['member_id']; ?>" 
-                                           class="btn btn-sm btn-warning btn-action" title="Edit">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <a href="delete_member.php?id=<?php echo $member['member_id']; ?>" 
-                                           class="btn btn-sm btn-danger btn-action confirm-action-link" 
-                                           title="Delete"
-                                           data-message="Are you sure you want to delete this member?">
-                                            <i class="fas fa-trash"></i>
-                                        </a>
+                                    <td class="text-center">
+                                        <div class="dropdown">
+                                            <button class="btn action-menu-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                <i class="fas fa-ellipsis-v"></i>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end action-dropdown-menu">
+                                                <?php if (isset($member['is_approved']) && !$member['is_approved']): ?>
+                                                <li>
+                                                    <form method="POST" class="confirm-action-form" data-message="Are you sure you want to approve this member?">
+                                                        <input type="hidden" name="action" value="approve">
+                                                        <input type="hidden" name="member_id" value="<?php echo $member['member_id']; ?>">
+                                                        <button type="submit" class="dropdown-item text-success">
+                                                            <i class="fas fa-check me-2"></i> Approve
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li>
+                                                    <form method="POST" class="confirm-action-form" data-message="Are you sure you want to reject this member?">
+                                                        <input type="hidden" name="action" value="reject">
+                                                        <input type="hidden" name="member_id" value="<?php echo $member['member_id']; ?>">
+                                                        <button type="submit" class="dropdown-item text-danger">
+                                                            <i class="fas fa-times me-2"></i> Reject
+                                                        </button>
+                                                    </form>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <?php endif; ?>
+                                                <li>
+                                                    <a href="view_member.php?id=<?php echo $member['member_id']; ?>" class="dropdown-item">
+                                                        <i class="fas fa-eye me-2 text-info"></i> View Details
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="edit_member.php?id=<?php echo $member['member_id']; ?>" class="dropdown-item">
+                                                        <i class="fas fa-edit me-2 text-warning"></i> Edit Member
+                                                    </a>
+                                                </li>
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li>
+                                                    <a href="delete_member.php?id=<?php echo $member['member_id']; ?>" 
+                                                       class="dropdown-item text-danger confirm-action-link"
+                                                       data-message="Are you sure you want to delete this member?">
+                                                        <i class="fas fa-trash me-2"></i> Delete
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -766,6 +1206,26 @@ $flash = getFlashMessage();
     <?php include __DIR__ . '/includes/footer.php'; ?>
 
     <script>
+    // Explicitly initialize all Bootstrap dropdowns
+    document.addEventListener('DOMContentLoaded', function () {
+        var dropdownEls = document.querySelectorAll('[data-bs-toggle="dropdown"]');
+        dropdownEls.forEach(function (el) {
+            new bootstrap.Dropdown(el);
+
+            el.addEventListener('show.bs.dropdown', function () {
+                var row = el.closest('tr');
+                if (row) row.classList.add('dropdown-open-row');
+            });
+
+            el.addEventListener('hide.bs.dropdown', function () {
+                var row = el.closest('tr');
+                if (row) row.classList.remove('dropdown-open-row');
+            });
+        });
+    });
+    </script>
+
+    <script>
         // Auto-dismiss alerts
         setTimeout(() => {
             document.querySelectorAll('.alert').forEach(alert => {
@@ -773,6 +1233,67 @@ $flash = getFlashMessage();
                 if (closeBtn) closeBtn.click();
             });
         }, 5000);
+    </script>
+
+    <script>
+    // Sidebar hamburger toggle
+    (function(){
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+        const sidebarLinks = document.querySelectorAll('.sidebar-menu a');
+        if (!menuToggle) return;
+
+        const closeSidebar = () => {
+            document.body.classList.remove('sidebar-open');
+            menuToggle.setAttribute('aria-expanded', 'false');
+        };
+
+        menuToggle.addEventListener('click', () => {
+            const open = !document.body.classList.contains('sidebar-open');
+            document.body.classList.toggle('sidebar-open', open);
+            menuToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+
+        if (sidebarBackdrop) sidebarBackdrop.addEventListener('click', closeSidebar);
+        sidebarLinks.forEach(link => link.addEventListener('click', closeSidebar));
+    })();
+    </script>
+
+    <script>
+    // Filter dropdown handler to sync hidden input + label
+    (function(){
+        const items = document.querySelectorAll('.filter-dropdown .dropdown-item');
+        items.forEach(item => {
+            item.addEventListener('click', function(e){
+                e.preventDefault();
+                const targetId = this.dataset.targetInput;
+                const labelId = this.dataset.label;
+                const value = this.dataset.value;
+                const target = document.getElementById(targetId);
+                const label = document.getElementById(labelId)?.querySelector('span');
+                if (target) target.value = value;
+                if (label) label.textContent = this.textContent.trim();
+            });
+        });
+    })();
+    </script>
+
+    <script>
+    // Mobile filters collapse toggle (members)
+    (() => {
+        const filterToggle = document.getElementById('mobileFilterToggle');
+        const filterCard = document.getElementById('mobileFilterCard');
+        const chevron = document.getElementById('mobileFilterChevron');
+
+        if (!filterToggle || !filterCard || !chevron) return;
+
+        filterToggle.addEventListener('click', () => {
+            const isVisible = filterCard.classList.toggle('show');
+            filterToggle.setAttribute('aria-expanded', isVisible ? 'true' : 'false');
+            chevron.classList.toggle('fa-chevron-up', isVisible);
+            chevron.classList.toggle('fa-chevron-down', !isVisible);
+        });
+    })();
     </script>
 
     <script>

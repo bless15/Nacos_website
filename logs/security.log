@@ -53,3 +53,82 @@
 [2025-11-14 17:00:29] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 25 by admin ID: 1
 [2025-11-16 08:42:48] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
 [2025-11-16 09:08:14] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 26 by admin ID: 1
+[2025-11-17 21:12:33] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-17 21:13:11] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-19 13:58:50] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-19 14:09:36] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 27 by admin ID: 1
+[2025-11-19 14:19:00] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-19 16:16:33] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-19 16:45:11] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-20 01:26:20] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-20 10:14:04] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: 22/0323
+[2025-11-20 10:14:13] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-20 14:03:59] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-20 14:04:16] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-11-20 14:04:27] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-11-20 14:24:11] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 28 by admin ID: 1
+[2025-12-11 06:51:45] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-12-11 06:54:07] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 29 by admin ID: 1
+[2025-12-15 10:48:06] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-12-15 11:41:52] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-12-15 14:37:21] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-12-15 16:07:37] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-12-15 16:10:39] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-12-16 18:49:22] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-12-16 18:58:45] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-12-17 01:39:50] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-12-17 11:36:35] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-12-18 15:02:27] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2025-12-18 15:02:35] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2025-12-23 16:41:05] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-01-29 16:22:07] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-01-29 17:15:54] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-01-29 17:17:09] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 30 by admin ID: 1
+[2026-01-30 19:49:18] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-01-31 02:21:50] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-18 12:45:08] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-18 14:29:38] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-19 19:44:05] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2026-02-19 19:44:13] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2026-02-19 19:44:31] [warning] User: anonymous | IP: ::1 | Event: Failed login attempt: super_admin
+[2026-02-19 21:35:36] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-20 05:22:48] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-20 06:39:47] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-20 06:52:19] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 32 by admin ID: 1
+[2026-02-20 07:54:34] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-20 08:10:20] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 33 by admin ID: 1
+[2026-02-20 08:26:53] [info] User: super_admin | IP: 192.168.207.75 | Event: Successful login: super_admin
+[2026-02-20 08:51:17] [info] User: super_admin | IP: ::1 | Event: Admin approved member ID: 34 by admin ID: 1
+[2026-02-23 05:25:10] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-23 05:52:26] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-23 06:27:57] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-23 07:39:03] [warning] User: anonymous | IP: 192.168.0.164 | Event: Failed login attempt: Super_admin
+[2026-02-23 07:39:15] [info] User: super_admin | IP: 192.168.0.164 | Event: Successful login: super_admin
+[2026-02-23 08:06:58] [info] User: super_admin | IP: 192.168.0.164 | Event: Successful login: super_admin
+[2026-02-23 08:14:59] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-23 09:03:51] [info] User: super_admin | IP: 192.168.0.164 | Event: Successful login: super_admin
+[2026-02-23 11:33:45] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-23 12:50:54] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-23 14:37:21] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-23 15:20:47] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-24 11:36:55] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-25 06:03:48] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-25 07:04:57] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-02-26 10:55:34] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-20 08:04:26] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-20 19:22:22] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-20 23:20:39] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-21 07:14:50] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-21 08:35:47] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-21 08:48:59] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-21 11:56:26] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-21 20:42:57] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-22 19:38:31] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-22 19:49:08] [info] User: super_admin | IP: ::1 | Event: Administrator logged out: super_admin
+[2026-03-23 08:54:52] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-23 16:28:20] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-25 01:49:30] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-25 10:48:17] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-25 11:05:49] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-27 11:05:15] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin
+[2026-03-28 16:43:23] [info] User: super_admin | IP: ::1 | Event: Successful login: super_admin

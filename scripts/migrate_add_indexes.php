@@ -10,40 +10,40 @@ $db = getDB();
 
 $checks = [
     [
-        'table' => 'PARTNERS',
+        'table' => 'partners',
         'index' => 'idx_partners_featured_start',
         'columns' => 'is_featured, partnership_start_date',
-        'sql' => "ALTER TABLE PARTNERS ADD INDEX idx_partners_featured_start (is_featured, partnership_start_date)"
+        'sql' => "ALTER TABLE partners ADD INDEX idx_partners_featured_start (is_featured, partnership_start_date)"
     ],
     [
-        'table' => 'EVENTS',
+        'table' => 'events',
         'index' => 'idx_events_event_date',
         'columns' => 'event_date',
-        'sql' => "ALTER TABLE EVENTS ADD INDEX idx_events_event_date (event_date)"
+        'sql' => "ALTER TABLE events ADD INDEX idx_events_event_date (event_date)"
     ],
     [
-        'table' => 'PROJECTS',
+        'table' => 'projects',
         'index' => 'idx_projects_status_updated',
         'columns' => 'project_status, updated_at',
-        'sql' => "ALTER TABLE PROJECTS ADD INDEX idx_projects_status_updated (project_status, updated_at)"
+        'sql' => "ALTER TABLE projects ADD INDEX idx_projects_status_updated (project_status, updated_at)"
     ],
     [
-        'table' => 'PARTNER_REQUESTS',
+        'table' => 'partner_requests',
         'index' => 'idx_partner_requests_created',
         'columns' => 'created_at',
-        'sql' => "ALTER TABLE PARTNER_REQUESTS ADD INDEX idx_partner_requests_created (created_at)"
+        'sql' => "ALTER TABLE partner_requests ADD INDEX idx_partner_requests_created (created_at)"
     ],
     [
-        'table' => 'MEMBERS',
+        'table' => 'members',
         'index' => 'idx_members_status',
         'columns' => 'membership_status',
-        'sql' => "ALTER TABLE MEMBERS ADD INDEX idx_members_status (membership_status)"
+        'sql' => "ALTER TABLE members ADD INDEX idx_members_status (membership_status)"
     ],
     [
-        'table' => 'MEMBER_PROJECTS',
+        'table' => 'member_projects',
         'index' => 'idx_member_projects_member_join',
         'columns' => 'member_id, join_date',
-        'sql' => "ALTER TABLE MEMBER_PROJECTS ADD INDEX idx_member_projects_member_join (member_id, join_date)"
+        'sql' => "ALTER TABLE member_projects ADD INDEX idx_member_projects_member_join (member_id, join_date)"
     ]
 ];
 

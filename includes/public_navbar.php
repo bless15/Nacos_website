@@ -34,7 +34,7 @@ $pending_feedback_count = 0;
 if ($is_logged_in && isset($db)) {
     $member_id = $_SESSION['member_id'];
     $pending_feedback_count = $db->fetchOne(
-        "SELECT COUNT(*) as count FROM MEMBER_EVENTS me
+        "SELECT COUNT(*) as count FROM member_events me
          WHERE me.member_id = ? 
          AND me.attendance_status = 'attended' 
          AND (me.feedback_rating IS NULL OR me.feedback_comment IS NULL OR me.feedback_comment = '')",
@@ -67,6 +67,11 @@ if ($is_logged_in && isset($db)) {
                         Events
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link <?php echo in_array($current_page, ['announcements.php', 'announcement_details.php'], true) ? 'active' : ''; ?>" href="announcements.php">
+                        Announcements
+                    </a>
+                </li>
                 
                 <?php if ($is_logged_in): ?>
                 <li class="nav-item">
@@ -82,6 +87,11 @@ if ($is_logged_in && isset($db)) {
                 <li class="nav-item">
                     <a class="nav-link <?php echo ($current_page === 'projects.php') ? 'active' : ''; ?>" href="projects.php">
                         Projects
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?php echo ($current_page === 'past_questions.php') ? 'active' : ''; ?>" href="past_questions.php">
+                        Past Questions
                     </a>
                 </li>
                 <li class="nav-item">

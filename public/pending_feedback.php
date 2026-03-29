@@ -13,7 +13,7 @@
 require_once __DIR__ . '/../includes/security.php';
 
 // Include required files
-require_once '../config/database.php';
+require_once __DIR__ . '/../config/config.php';
 require_once '../includes/auth.php';
 
 // Require member login
@@ -29,8 +29,8 @@ $db = getDB();
 // Get pending feedback events
 $pending_feedback = $db->fetchAll(
     "SELECT e.event_id, e.event_name, e.event_date, e.event_type, e.summary
-     FROM MEMBER_EVENTS me
-     JOIN EVENTS e ON me.event_id = e.event_id
+     FROM member_events me
+     JOIN events e ON me.event_id = e.event_id
      WHERE me.member_id = ? 
      AND me.attendance_status = 'attended' 
      AND (me.feedback_rating IS NULL OR me.feedback_comment IS NULL OR me.feedback_comment = '')
@@ -49,7 +49,7 @@ $intended_event = null;
 
 if ($registration_intent_id) {
     $intended_event = $db->fetchOne(
-        "SELECT event_name, event_date FROM EVENTS WHERE event_id = ?",
+        "SELECT event_name, event_date FROM events WHERE event_id = ?",
         [$registration_intent_id]
     );
 }

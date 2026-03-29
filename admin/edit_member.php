@@ -12,12 +12,12 @@
 // Security gate
 require_once __DIR__ . '/../includes/security.php';
 
-// Include required files
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/auth.php';
 
-// Require login
-requireAdminRole();
+// Require full admin privileges
+requireFullAdminRole();
 
 // Get current user
 $current_user = getCurrentMember();
@@ -34,7 +34,7 @@ if ($member_id <= 0) {
 
 // Get member data
 $member = $db->fetchOne(
-    "SELECT * FROM MEMBERS WHERE member_id = ?", 
+    "SELECT * FROM members WHERE member_id = ?", 
     [$member_id]
 );
 
@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Check for duplicate matric number (excluding current member)
     if (empty($errors)) {
         $check_matric = $db->fetchOne(
-            "SELECT member_id FROM MEMBERS WHERE matric_no = ? AND member_id != ?", 
+            "SELECT member_id FROM members WHERE matric_no = ? AND member_id != ?", 
             [$matric_no, $member_id]
         );
         
@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Check for duplicate email (excluding current member)
     if (empty($errors)) {
         $check_email = $db->fetchOne(
-            "SELECT member_id FROM MEMBERS WHERE email = ? AND member_id != ?", 
+            "SELECT member_id FROM members WHERE email = ? AND member_id != ?", 
             [$email, $member_id]
         );
         
@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // If no errors, update member
     if (empty($errors)) {
         try {
-            $query = "UPDATE MEMBERS SET 
+            $query = "UPDATE members SET 
                         matric_no = ?, 
                         full_name = ?, 
                         email = ?, 
@@ -165,7 +165,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Get departments for dropdown
-$departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY department");
+$departments = $db->fetchAll("SELECT DISTINCT department FROM members ORDER BY department");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -251,6 +251,27 @@ $departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY d
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             margin-bottom: 25px;
         }
+
+        .menu-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            border: 2px solid #dee2e6;
+            background: #fff;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+
+        .menu-toggle:hover {
+            background: #f8f9fa;
+        }
+
+        .sidebar-overlay {
+            display: none;
+        }
         
         .form-card {
             background: white;
@@ -314,57 +335,117 @@ $departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY d
             margin: 5px 0 0;
             opacity: 0.9;
         }
+
+        @media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                box-shadow: 6px 0 20px rgba(0, 0, 0, 0.2);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+
+            .menu-toggle {
+                display: inline-flex;
+            }
+
+            .sidebar-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.45);
+                z-index: 999;
+            }
+
+            .sidebar-overlay.show {
+                display: block;
+            }
+
+            .top-bar {
+                padding: 14px;
+            }
+
+            .top-actions {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .top-actions .btn {
+                width: 100%;
+            }
+
+            .form-card {
+                padding: 18px;
+            }
+
+            .member-info-box {
+                padding: 14px;
+            }
+
+            .member-info-box h4 {
+                font-size: 18px;
+            }
+
+            .form-action-buttons {
+                flex-direction: column;
+            }
+
+            .form-action-buttons .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .sidebar-header {
+                padding: 16px;
+            }
+
+            .sidebar-header h4 {
+                font-size: 18px;
+            }
+
+            .sidebar-menu a {
+                padding: 10px 16px;
+            }
+
+            .sidebar-menu a:hover,
+            .sidebar-menu a.active {
+                padding-left: 20px;
+            }
+
+            .main-content {
+                padding: 12px;
+            }
+
+            .form-section h5 {
+                font-size: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="../assets/images/nacos_logo.jpg" alt="NACOS Logo" style="height: 60px; margin-bottom: 10px;">
-            <h4>NACOS Dashboard</h4>
-            <small>Admin Panel</small>
-        </div>
-        
-        <div class="sidebar-menu">
-            <a href="index.php">
-                <i class="fas fa-home"></i> Dashboard
-            </a>
-            <a href="members.php" class="active">
-                <i class="fas fa-users"></i> Members
-            </a>
-            <a href="projects.php">
-                <i class="fas fa-project-diagram"></i> Projects
-            </a>
-            <a href="events.php">
-                <i class="fas fa-calendar-alt"></i> Events
-            </a>
-            <a href="resources.php">
-                <i class="fas fa-book"></i> Resources
-            </a>
-            <a href="partners.php">
-                <i class="fas fa-handshake"></i> Partners
-            </a>
-            <a href="documents.php">
-                <i class="fas fa-folder"></i> Documents
-            </a>
-            <hr style="border-color: rgba(255,255,255,0.1);">
-            <a href="../public/index.php" target="_blank">
-                <i class="fas fa-external-link-alt"></i> View Public Site
-            </a>
-            <a href="logout.php">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
-    </div>
+    <?php require_once __DIR__ . '/includes/sidebar.php'; ?>
     
     <!-- Main Content -->
     <div class="main-content">
         <!-- Top Bar -->
         <div class="top-bar">
-            <div class="d-flex justify-content-between align-items-center">
-                <h3><i class="fas fa-user-edit me-2"></i> Edit Member</h3>
-                <div class="d-flex gap-2">
-                    <a href="view_member.php?id=<?php echo $member_id; ?>" class="btn btn-outline-info">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="menu-toggle" id="menuToggle" aria-label="Toggle navigation menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h3><i class="fas fa-user-edit me-2"></i> Edit Member</h3>
+                </div>
+                <div class="d-flex gap-2 top-actions">
+                    <a href="view_member.php?id=<?php echo $member_id; ?>" class="btn btn-outline-primary">
                         <i class="fas fa-eye me-2"></i> View Profile
                     </a>
                     <a href="members.php" class="btn btn-outline-secondary">
@@ -580,7 +661,7 @@ $departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY d
                 </div>
                 
                 <!-- Submit Buttons -->
-                <div class="d-flex gap-2 justify-content-end">
+                <div class="d-flex gap-2 justify-content-end form-action-buttons">
                     <a href="members.php" class="btn btn-outline-secondary">
                         <i class="fas fa-times me-2"></i> Cancel
                     </a>
@@ -597,6 +678,30 @@ $departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY d
     <?php include __DIR__ . '/includes/footer.php'; ?>
     
     <script>
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarOverlay = document.getElementById('sidebarBackdrop') || document.getElementById('sidebarOverlay');
+
+        function closeSidebar() {
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+        }
+
+        if (menuToggle && sidebar && sidebarOverlay) {
+            menuToggle.addEventListener('click', function () {
+                sidebar.classList.toggle('show');
+                sidebarOverlay.classList.toggle('show');
+            });
+
+            sidebarOverlay.addEventListener('click', closeSidebar);
+
+            window.addEventListener('resize', function () {
+                if (window.innerWidth > 991.98) {
+                    closeSidebar();
+                }
+            });
+        }
+
         // Auto-dismiss alerts
         setTimeout(() => {
             document.querySelectorAll('.alert').forEach(alert => {

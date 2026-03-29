@@ -2,21 +2,22 @@
 /**
  * Public Partner Interest Form
  * - GET: show form
- * - POST: validate input and insert into PARTNER_REQUESTS
+ * - POST: validate input and insert into partner_requests
  */
+require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/security.php';
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/auth.php';
 
 $db = getDB();
 $errors = [];
 $success = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $company_name = trim($_POST['company_name'] ?? '');
-    $contact_name = trim($_POST['contact_name'] ?? '');
-    $contact_email = trim($_POST['contact_email'] ?? '');
-    $website_url = trim($_POST['website_url'] ?? '');
-    $message = trim($_POST['message'] ?? '');
+    $company_name = sanitizeInput($_POST['company_name'] ?? '');
+    $contact_name = sanitizeInput($_POST['contact_name'] ?? '');
+    $contact_email = sanitizeInput($_POST['contact_email'] ?? '');
+    $website_url = sanitizeInput($_POST['website_url'] ?? '');
+    $message = sanitizeInput($_POST['message'] ?? '');
 
     if ($company_name === '') {
         $errors[] = 'Company / Organisation name is required.';
@@ -31,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($errors)) {
         try {
             // The schema defines contact_person and created_at (auto-filled). Insert only the columns that exist.
-            $db->query("INSERT INTO PARTNER_REQUESTS (company_name, contact_person, contact_email, website_url, message)
+            $db->query("INSERT INTO partner_requests (company_name, contact_person, contact_email, website_url, message)
                         VALUES (:company_name, :contact_person, :contact_email, :website_url, :message)", [
                 ':company_name' => $company_name,
                 ':contact_person' => $contact_name,

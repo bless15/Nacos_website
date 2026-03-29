@@ -70,11 +70,10 @@ class Database {
             $this->connection = new PDO($dsn, DB_USER, DB_PASS, $options);
             
         } catch (PDOException $e) {
+            error_log("Database Connection Error: " . $e->getMessage());
             if (ENVIRONMENT === 'development') {
                 die("Database Connection Error: " . $e->getMessage());
             } else {
-                // Log error and show generic message in production
-                error_log("Database Connection Error: " . $e->getMessage());
                 die("Sorry, we're experiencing technical difficulties. Please try again later.");
             }
         }
@@ -123,10 +122,10 @@ class Database {
             $stmt->execute($params);
             return $stmt;
         } catch (PDOException $e) {
+            error_log("Query Error: " . $e->getMessage() . " | Query: " . $query);
             if (ENVIRONMENT === 'development') {
                 die("Query Error: " . $e->getMessage() . "<br>Query: " . $query);
             } else {
-                error_log("Query Error: " . $e->getMessage() . " | Query: " . $query);
                 throw new Exception("Database query failed");
             }
         }

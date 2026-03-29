@@ -12,12 +12,12 @@
 // Security gate
 require_once __DIR__ . '/../includes/security.php';
 
-// Include required files
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/auth.php';
 
-// Require login
-requireAdminRole();
+// Require full admin privileges
+requireFullAdminRole();
 
 // Get current user
 $current_user = getCurrentMember();
@@ -76,7 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Check for duplicate matric number
     if (empty($errors)) {
         $check_matric = $db->fetchOne(
-            "SELECT member_id FROM MEMBERS WHERE matric_no = ?", 
+            "SELECT member_id FROM members WHERE matric_no = ?", 
             [$matric_no]
         );
         
@@ -88,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Check for duplicate email
     if (empty($errors)) {
         $check_email = $db->fetchOne(
-            "SELECT member_id FROM MEMBERS WHERE email = ?", 
+            "SELECT member_id FROM members WHERE email = ?", 
             [$email]
         );
         
@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // If no errors, insert member
     if (empty($errors)) {
         try {
-            $query = "INSERT INTO MEMBERS (
+            $query = "INSERT INTO members (
                         matric_no, full_name, email, phone, department, level, 
                         gender, registration_date, membership_status, bio, 
                         github_username, linkedin_url, skills
@@ -135,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Get departments for dropdown (from existing members)
-$departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY department");
+$departments = $db->fetchAll("SELECT DISTINCT department FROM members ORDER BY department");
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -157,13 +157,23 @@ $departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY d
             --secondary-color: #764ba2;
             --sidebar-bg: #2c3e50;
             --sidebar-hover: #34495e;
+            --success-start: #11998e;
+            --success-end: #38ef7d;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f8f9fa;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
         }
         
+        /* Sidebar */
         .sidebar {
             position: fixed;
             top: 0;
@@ -173,7 +183,9 @@ $departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY d
             background: var(--sidebar-bg);
             color: white;
             overflow-y: auto;
+            transition: all 0.3s;
             z-index: 1000;
+            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
         }
         
         .sidebar-header {
@@ -208,43 +220,118 @@ $departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY d
             margin-right: 10px;
         }
         
+        /* Main Content */
         .main-content {
             margin-left: 260px;
-            padding: 20px;
+            padding: 30px;
             min-height: 100vh;
         }
         
+        /* Top Bar */
         .top-bar {
             background: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            margin-bottom: 25px;
+            padding: 25px 30px;
+            border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            margin-bottom: 30px;
+            animation: fadeInDown 0.6s ease;
         }
         
+        .top-bar h3 {
+            color: #2c3e50;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .menu-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            border: 2px solid #dee2e6;
+            background: #fff;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+
+        .menu-toggle:hover {
+            background: #f8f9fa;
+        }
+
+        .sidebar-overlay {
+            display: none;
+        }
+        
+        /* Form Card */
         .form-card {
             background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            max-width: 900px;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            max-width: 1000px;
+            animation: fadeInUp 0.6s ease backwards;
+            animation-delay: 0.2s;
         }
         
+        /* Form Sections */
         .form-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 30px;
+            border-radius: 16px;
             margin-bottom: 30px;
+            border-left: 5px solid var(--primary-color);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .form-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 150px;
+            height: 150px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            opacity: 0.05;
+            border-radius: 50%;
+            transform: translate(30%, -30%);
         }
         
         .form-section h5 {
             color: var(--primary-color);
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid var(--primary-color);
+            font-weight: 700;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.3rem;
+            position: relative;
+            z-index: 1;
         }
         
+        .form-section h5 i {
+            width: 45px;
+            height: 45px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        /* Form Controls */
         .form-label {
             font-weight: 600;
-            color: #333;
+            color: #495057;
             margin-bottom: 8px;
+            font-size: 14px;
+            position: relative;
+            z-index: 1;
         }
         
         .required {
@@ -252,69 +339,225 @@ $departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY d
         }
         
         .form-control, .form-select {
-            border-radius: 8px;
-            padding: 10px 15px;
-            border: 2px solid #e0e0e0;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 12px 16px;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            position: relative;
+            z-index: 1;
         }
         
         .form-control:focus, .form-select:focus {
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            outline: none;
+        }
+        
+        textarea.form-control {
+            resize: vertical;
         }
         
         .form-text {
-            font-size: 12px;
-            color: #666;
+            font-size: 13px;
+            color: #6c757d;
+            margin-top: 6px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Buttons */
+        .btn {
+            border-radius: 10px;
+            padding: 12px 25px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            color: white;
+        }
+        
+        .btn-outline-secondary {
+            border: 2px solid #6c757d;
+            color: #6c757d;
+            background: transparent;
+        }
+        
+        .btn-outline-secondary:hover {
+            background: #6c757d;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        /* Alerts */
+        .alert {
+            border-radius: 12px;
+            padding: 20px 25px;
+            border: none;
+            margin-bottom: 25px;
+            animation: fadeInDown 0.6s ease;
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.15), rgba(245, 87, 108, 0.15));
+            border-left: 5px solid #f093fb;
+        }
+        
+        /* Animations */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 991.98px) {
+            .sidebar {
+                position: fixed;
+                width: 260px;
+                height: 100vh;
+                transform: translateX(-100%);
+                box-shadow: 6px 0 20px rgba(0, 0, 0, 0.2);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+
+            .menu-toggle {
+                display: inline-flex;
+            }
+
+            .sidebar-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.45);
+                z-index: 999;
+            }
+
+            .sidebar-overlay.show {
+                display: block;
+            }
+
+            .top-bar,
+            .form-card {
+                padding: 20px;
+            }
+
+            .form-section {
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+
+            .form-section h5 {
+                font-size: 1.1rem;
+                gap: 10px;
+            }
+
+            .form-section h5 i {
+                width: 38px;
+                height: 38px;
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .sidebar-header {
+                padding: 16px;
+            }
+
+            .sidebar-header h4 {
+                font-size: 18px;
+            }
+
+            .sidebar-menu a {
+                padding: 10px 16px;
+            }
+
+            .sidebar-menu a:hover,
+            .sidebar-menu a.active {
+                padding-left: 20px;
+            }
+
+            .main-content {
+                padding: 15px;
+            }
+
+            .top-bar,
+            .form-card {
+                padding: 16px;
+                border-radius: 12px;
+            }
+
+            .form-section {
+                padding: 16px;
+                border-radius: 12px;
+            }
+
+            .top-bar h3 {
+                font-size: 1.25rem;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .action-buttons .btn {
+                width: 100%;
+            }
+
+            .btn {
+                width: 100%;
+                padding: 11px 16px;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="../assets/images/nacos_logo.jpg" alt="NACOS Logo" style="height: 60px; margin-bottom: 10px;">
-            <h4>NACOS Dashboard</h4>
-            <small>Admin Panel</small>
-        </div>
-        
-        <div class="sidebar-menu">
-            <a href="index.php">
-                <i class="fas fa-home"></i> Dashboard
-            </a>
-            <a href="members.php" class="active">
-                <i class="fas fa-users"></i> Members
-            </a>
-            <a href="projects.php">
-                <i class="fas fa-project-diagram"></i> Projects
-            </a>
-            <a href="events.php">
-                <i class="fas fa-calendar-alt"></i> Events
-            </a>
-            <a href="resources.php">
-                <i class="fas fa-book"></i> Resources
-            </a>
-            <a href="partners.php">
-                <i class="fas fa-handshake"></i> Partners
-            </a>
-            <a href="documents.php">
-                <i class="fas fa-folder"></i> Documents
-            </a>
-            <hr style="border-color: rgba(255,255,255,0.1);">
-            <a href="../public/index.php" target="_blank">
-                <i class="fas fa-external-link-alt"></i> View Public Site
-            </a>
-            <a href="logout.php">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
-    </div>
+    <?php require_once __DIR__ . '/includes/sidebar.php'; ?>
     
     <!-- Main Content -->
     <div class="main-content">
         <!-- Top Bar -->
         <div class="top-bar">
-            <div class="d-flex justify-content-between align-items-center">
-                <h3><i class="fas fa-user-plus me-2"></i> Add New Member</h3>
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="menu-toggle" id="menuToggle" aria-label="Toggle navigation menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h3><i class="fas fa-user-plus me-2"></i> Add New Member</h3>
+                </div>
                 <a href="members.php" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-2"></i> Back to Members
                 </a>
@@ -535,7 +778,7 @@ $departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY d
                 </div>
                 
                 <!-- Submit Buttons -->
-                <div class="d-flex gap-2 justify-content-end">
+                <div class="d-flex gap-2 justify-content-end action-buttons">
                     <a href="members.php" class="btn btn-outline-secondary">
                         <i class="fas fa-times me-2"></i> Cancel
                     </a>
@@ -552,6 +795,30 @@ $departments = $db->fetchAll("SELECT DISTINCT department FROM MEMBERS ORDER BY d
     <?php include __DIR__ . '/includes/footer.php'; ?>
     
     <script>
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarOverlay = document.getElementById('sidebarBackdrop') || document.getElementById('sidebarOverlay');
+
+        function closeSidebar() {
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+        }
+
+        if (menuToggle && sidebar && sidebarOverlay) {
+            menuToggle.addEventListener('click', function() {
+                sidebar.classList.toggle('show');
+                sidebarOverlay.classList.toggle('show');
+            });
+
+            sidebarOverlay.addEventListener('click', closeSidebar);
+
+            window.addEventListener('resize', function() {
+                if (window.innerWidth > 991.98) {
+                    closeSidebar();
+                }
+            });
+        }
+
         // Form validation
         document.getElementById('addMemberForm').addEventListener('submit', function(e) {
             const matricNo = document.getElementById('matric_no').value.trim();

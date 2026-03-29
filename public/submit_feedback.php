@@ -13,7 +13,7 @@
 require_once __DIR__ . '/../includes/security.php';
 
 // Include required files
-require_once '../config/database.php';
+require_once __DIR__ . '/../config/config.php';
 require_once '../includes/auth.php';
 
 // Require member login
@@ -36,8 +36,8 @@ if (!$event_id) {
 // Verify member attended this event and hasn't submitted feedback
 $member_event = $db->fetchOne(
     "SELECT me.*, e.event_name, e.event_date, e.event_type, e.summary
-     FROM MEMBER_EVENTS me
-     JOIN EVENTS e ON me.event_id = e.event_id
+     FROM member_events me
+     JOIN events e ON me.event_id = e.event_id
      WHERE me.event_id = ? AND me.member_id = ?",
     [$event_id, $member_id]
 );
@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error_message = 'Feedback comment must be at least 10 characters';
         } else {
             try {
-                $query = "UPDATE MEMBER_EVENTS 
+                $query = "UPDATE member_events 
                          SET feedback_rating = ?, feedback_comment = ?
                          WHERE event_id = ? AND member_id = ?";
                 

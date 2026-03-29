@@ -1,7 +1,7 @@
 <?php
 /**
  * ============================================
- * NACOS DASHBOARD - MY EVENTS
+ * NACOS DASHBOARD - MY events
  * ============================================
  * Purpose: Display member's registered and attended events
  * Access: Logged-in members only
@@ -13,7 +13,7 @@
 require_once __DIR__ . '/../includes/security.php';
 
 // Include required files
-require_once '../config/database.php';
+require_once __DIR__ . '/../config/config.php';
 require_once '../includes/auth.php';
 
 // Require member login
@@ -29,9 +29,9 @@ $db = getDB();
 // Get member's events with details
 $my_events = $db->fetchAll(
     "SELECT e.*, me.attendance_status, me.registration_date, me.feedback_rating, me.feedback_comment,
-            (SELECT COUNT(*) FROM MEMBER_EVENTS me2 WHERE me2.event_id = e.event_id) as total_registered
-     FROM MEMBER_EVENTS me
-     JOIN EVENTS e ON me.event_id = e.event_id
+            (SELECT COUNT(*) FROM member_events me2 WHERE me2.event_id = e.event_id) as total_registered
+     FROM member_events me
+     JOIN events e ON me.event_id = e.event_id
      WHERE me.member_id = ?
      ORDER BY e.event_date DESC",
     [$member_id]
@@ -40,8 +40,8 @@ $my_events = $db->fetchAll(
 // Count pending feedback
 $pending_feedback = $db->fetchAll(
     "SELECT e.event_id, e.event_name, e.event_date
-     FROM MEMBER_EVENTS me
-     JOIN EVENTS e ON me.event_id = e.event_id
+     FROM member_events me
+     JOIN events e ON me.event_id = e.event_id
      WHERE me.member_id = ? 
      AND me.attendance_status = 'attended' 
      AND (me.feedback_rating IS NULL OR me.feedback_comment IS NULL OR me.feedback_comment = '')
@@ -58,7 +58,7 @@ $stats = $db->fetchOne(
         SUM(CASE WHEN attendance_status = 'attended' THEN 1 ELSE 0 END) as total_attended,
         SUM(CASE WHEN attendance_status = 'registered' THEN 1 ELSE 0 END) as upcoming,
         SUM(CASE WHEN attendance_status = 'attended' AND feedback_rating IS NOT NULL THEN 1 ELSE 0 END) as feedback_given
-     FROM MEMBER_EVENTS
+     FROM member_events
      WHERE member_id = ?",
     [$member_id]
 );
@@ -256,8 +256,15 @@ $stats = $db->fetchOne(
                                     <small class="text-muted">
                                         <i class="fas fa-calendar me-1"></i>
                                         <?php echo date('F d, Y', strtotime($event['event_date'])); ?>
-                                        <?php if ($event['event_time']): ?>
-                                            • <i class="fas fa-clock me-1"></i><?php echo date('g:i A', strtotime($event['event_time'])); ?>
+                                        <?php
+                                            $display_start = $event['start_time'] ?? $event['event_time'] ?? null;
+                                            $display_end = $event['end_time'] ?? null;
+                                        ?>
+                                        <?php if ($display_start): ?>
+                                            • <i class="fas fa-clock me-1"></i><?php echo date('g:i A', strtotime($display_start)); ?>
+                                            <?php if ($display_end): ?>
+                                                - <?php echo date('g:i A', strtotime($display_end)); ?>
+                                            <?php endif; ?>
                                         <?php endif; ?>
                                     </small>
                                     <br>

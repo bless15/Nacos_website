@@ -12,13 +12,13 @@
 // Security gate
 require_once __DIR__ . '/../includes/security.php';
 
-// Include required files
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/auth.php';
 require_once '../config/email.php';
 
-// Require admin login
-requireAdminRole();
+// Require full admin privileges
+requireFullAdminRole();
 
 // Initialize database
 $db = getDB();
@@ -27,7 +27,7 @@ $db = getDB();
 $member_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 // Fetch member details
-$member = $db->fetchOne("SELECT * FROM MEMBERS WHERE member_id = :id", [':id' => $member_id]);
+$member = $db->fetchOne("SELECT * FROM members WHERE member_id = :id", [':id' => $member_id]);
 
 if (!$member) {
     redirectWithMessage('members.php', 'Member not found.', 'error');
@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 // Approve member
                 $db->query("
-                    UPDATE MEMBERS 
+                    UPDATE members 
                     SET is_approved = 1, 
                         approved_by = :admin_id, 
                         approval_date = NOW() 
@@ -77,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 sendRejectionEmail($member['email'], $member['full_name']);
                 
                 // Delete member (rejected)
-                $db->query("DELETE FROM MEMBERS WHERE member_id = :id", [':id' => $member_id]);
+                $db->query("DELETE FROM members WHERE member_id = :id", [':id' => $member_id]);
                 
                 redirectWithMessage('members.php', 'Member registration rejected. Notification email sent.', 'success');
             } catch (Exception $e) {

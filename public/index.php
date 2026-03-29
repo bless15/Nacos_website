@@ -3,9 +3,9 @@
  * NACOS PUBLIC HOMEPAGE — rebuilt clean version
  */
 
-// Security & includes
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/security.php';
-require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/cache.php';
 
@@ -15,21 +15,21 @@ cache_delete('homepage_partners');
 $db = getDB();
 
 // Stats
-$total_members = (int)($db->fetchOne("SELECT COUNT(*) as count FROM MEMBERS WHERE membership_status = 'active'")["count"] ?? 0);
-$total_projects = (int)($db->fetchOne("SELECT COUNT(*) as count FROM PROJECTS")["count"] ?? 0);
-$total_events = (int)($db->fetchOne("SELECT COUNT(*) as count FROM EVENTS")["count"] ?? 0);
+$total_members = (int)($db->fetchOne("SELECT COUNT(*) as count FROM members WHERE membership_status = 'active'")["count"] ?? 0);
+$total_projects = (int)($db->fetchOne("SELECT COUNT(*) as count FROM projects")["count"] ?? 0);
+$total_events = (int)($db->fetchOne("SELECT COUNT(*) as count FROM events")["count"] ?? 0);
 
 // Small dataset queries for homepage
-$upcoming_events = $db->fetchAll("SELECT * FROM EVENTS WHERE event_date >= CURDATE() ORDER BY event_date ASC LIMIT 3");
-$recent_projects = $db->fetchAll("SELECT * FROM PROJECTS WHERE project_status='completed' ORDER BY project_id DESC LIMIT 3");
+$upcoming_events = $db->fetchAll("SELECT * FROM events WHERE event_date >= CURDATE() ORDER BY event_date ASC LIMIT 3");
+$recent_projects = $db->fetchAll("SELECT * FROM projects WHERE project_status='completed' ORDER BY project_id DESC LIMIT 3");
 
-$rows = $db->fetchAll("SELECT member_id, full_name FROM MEMBERS WHERE membership_status='active' LIMIT 100");
+$rows = $db->fetchAll("SELECT member_id, full_name FROM members WHERE membership_status='active' LIMIT 100");
 shuffle($rows);
 $showcase_members = array_slice($rows, 0, min(8, count($rows)));
 
 $partners = cache_get('homepage_partners');
 if ($partners === null) {
-    $partners = $db->fetchAll("SELECT partner_id, company_name, company_logo, website_url, is_featured FROM PARTNERS WHERE status='active' AND visibility='public' ORDER BY is_featured DESC, partnership_start_date DESC LIMIT 8");
+    $partners = $db->fetchAll("SELECT partner_id, company_name, company_logo, website_url, is_featured FROM partners WHERE status='active' AND visibility='public' ORDER BY is_featured DESC, partnership_start_date DESC LIMIT 8");
     cache_set('homepage_partners', $partners, 60);
 }
 

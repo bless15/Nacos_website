@@ -62,7 +62,7 @@ if ($applyDb) {
     echo "\nUpdating DB to store filenames only (APPLY MODE)\n";
     require_once __DIR__ . '/../config/database.php';
     $db = getDB();
-    $partners = $db->fetchAll("SELECT partner_id, company_logo FROM PARTNERS");
+    $partners = $db->fetchAll("SELECT partner_id, company_logo FROM partners");
     $updated = 0;
     foreach ($partners as $p) {
         $logo = $p['company_logo'] ?? '';
@@ -71,7 +71,7 @@ if ($applyDb) {
         $normalized = preg_replace('#^\.{1,2}/+#', '', $logo);
         $filename = basename($normalized);
         if ($filename !== $logo) {
-            $db->query("UPDATE PARTNERS SET company_logo = :logo WHERE partner_id = :id", [':logo' => $filename, ':id' => $p['partner_id']]);
+            $db->query("UPDATE partners SET company_logo = :logo WHERE partner_id = :id", [':logo' => $filename, ':id' => $p['partner_id']]);
             $updated++;
         }
     }

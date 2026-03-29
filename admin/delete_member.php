@@ -12,12 +12,12 @@
 // Security gate
 require_once __DIR__ . '/../includes/security.php';
 
-// Include required files
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/auth.php';
 
-// Require login
-requireAdminRole();
+// Require full admin privileges
+requireFullAdminRole();
 
 // Get current user
 $current_user = getCurrentMember();
@@ -34,7 +34,7 @@ if ($member_id <= 0) {
 
 // Get member data
 $member = $db->fetchOne(
-    "SELECT * FROM MEMBERS WHERE member_id = ?", 
+    "SELECT * FROM members WHERE member_id = ?", 
     [$member_id]
 );
 
@@ -44,13 +44,13 @@ if (!$member) {
 
 // Check if member has projects
 $project_count = $db->fetchOne(
-    "SELECT COUNT(*) as count FROM MEMBER_PROJECTS WHERE member_id = ?",
+    "SELECT COUNT(*) as count FROM member_projects WHERE member_id = ?",
     [$member_id]
 )['count'];
 
 // Check if member has events
 $event_count = $db->fetchOne(
-    "SELECT COUNT(*) as count FROM MEMBER_EVENTS WHERE member_id = ?",
+    "SELECT COUNT(*) as count FROM member_events WHERE member_id = ?",
     [$member_id]
 )['count'];
 
@@ -70,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($action === 'deactivate') {
             // Deactivate member (soft delete)
             try {
-                $query = "UPDATE MEMBERS SET membership_status = 'inactive' WHERE member_id = ?";
+                $query = "UPDATE members SET membership_status = 'inactive' WHERE member_id = ?";
                 $db->query($query, [$member_id]);
                 
                 redirectWithMessage('members.php', 'Member deactivated successfully', 'success');
@@ -83,14 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             try {
                 $db->beginTransaction();
                 
-                // Delete from MEMBER_PROJECTS
-                $db->query("DELETE FROM MEMBER_PROJECTS WHERE member_id = ?", [$member_id]);
+                // Delete from member_projects
+                $db->query("DELETE FROM member_projects WHERE member_id = ?", [$member_id]);
                 
-                // Delete from MEMBER_EVENTS
-                $db->query("DELETE FROM MEMBER_EVENTS WHERE member_id = ?", [$member_id]);
+                // Delete from member_events
+                $db->query("DELETE FROM member_events WHERE member_id = ?", [$member_id]);
                 
                 // Delete member
-                $db->query("DELETE FROM MEMBERS WHERE member_id = ?", [$member_id]);
+                $db->query("DELETE FROM members WHERE member_id = ?", [$member_id]);
                 
                 $db->commit();
                 
@@ -126,64 +126,110 @@ $csrf_token = generateCSRFToken();
         :root {
             --primary-color: #667eea;
             --secondary-color: #764ba2;
-            --danger-color: #dc3545;
+            --danger-start: #f093fb;
+            --danger-end: #f5576c;
+            --warning-start: #ffc107;
+            --warning-end: #ff6b6b;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
         
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 30px;
         }
         
         .delete-container {
-            max-width: 600px;
+            max-width: 700px;
             width: 100%;
+            animation: fadeInUp 0.6s ease;
         }
         
         .delete-card {
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            border-radius: 20px;
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
             overflow: hidden;
+            border: 3px solid #dc3545;
         }
         
         .delete-header {
-            background: linear-gradient(135deg, #dc3545, #c82333);
+            background: linear-gradient(135deg, var(--danger-start), var(--danger-end));
             color: white;
-            padding: 30px;
+            padding: 40px 30px;
             text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .delete-header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
         }
         
         .delete-header i {
-            font-size: 60px;
-            margin-bottom: 15px;
+            font-size: 70px;
+            margin-bottom: 20px;
+            animation: pulse 2s ease-in-out infinite;
+            display: inline-block;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.9; }
         }
         
         .delete-header h3 {
-            margin: 0;
-            font-weight: 600;
+            margin: 0 0 10px;
+            font-weight: 700;
+            font-size: 2rem;
+        }
+        
+        .delete-header p {
+            opacity: 0.95;
+            font-size: 15px;
         }
         
         .delete-body {
-            padding: 30px;
+            padding: 40px;
         }
         
         .member-info {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.08), rgba(0, 242, 254, 0.08));
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-left: 5px solid #4facfe;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .member-info h5 {
+            color: #2c3e50;
+            font-weight: 700;
             margin-bottom: 20px;
+            font-size: 1.2rem;
         }
         
         .member-info .info-row {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #dee2e6;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
         }
         
         .member-info .info-row:last-child {
@@ -192,39 +238,65 @@ $csrf_token = generateCSRFToken();
         
         .info-label {
             font-weight: 600;
-            color: #666;
+            color: #495057;
+            font-size: 14px;
         }
         
         .info-value {
-            color: #333;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        .badge {
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .badge.bg-success {
+            background: linear-gradient(135deg, #11998e, #38ef7d) !important;
+        }
+        
+        .badge.bg-secondary {
+            background: linear-gradient(135deg, #6c757d, #495057) !important;
         }
         
         .warning-box {
-            background: #fff3cd;
-            border: 2px solid #ffc107;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 107, 107, 0.1));
+            border: 3px solid var(--warning-start);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.2);
         }
         
         .warning-box i {
-            color: #ffc107;
-            font-size: 24px;
-            margin-right: 10px;
+            color: var(--warning-start);
+            font-size: 28px;
+            margin-right: 12px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .warning-box h6 {
+            color: #856404;
+            font-weight: 700;
         }
         
         .danger-box {
-            background: #f8d7da;
-            border: 2px solid #dc3545;
-            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.1), rgba(245, 87, 108, 0.1));
+            border: 3px solid var(--danger-start);
+            border-radius: 16px;
             padding: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(240, 147, 251, 0.2);
         }
         
         .danger-box i {
-            color: #dc3545;
+            color: var(--danger-start);
             font-size: 24px;
-            margin-right: 10px;
+            margin-right: 12px;
+            animation: pulse 2s ease-in-out infinite;
         }
         
         .action-buttons {
@@ -233,51 +305,63 @@ $csrf_token = generateCSRFToken();
         }
         
         .action-btn {
-            padding: 15px;
+            padding: 16px 25px;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             text-decoration: none;
+            font-size: 15px;
         }
         
         .action-btn i {
             margin-right: 10px;
+            font-size: 16px;
         }
         
         .btn-deactivate {
-            background: #ffc107;
-            color: #000;
+            background: linear-gradient(135deg, var(--warning-start), var(--warning-end));
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
         }
         
         .btn-deactivate:hover {
-            background: #e0a800;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 193, 7, 0.5);
+            animation: shake 0.5s;
         }
         
         .btn-delete {
-            background: #dc3545;
+            background: linear-gradient(135deg, var(--danger-start), var(--danger-end));
             color: white;
+            box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
         }
         
         .btn-delete:hover {
-            background: #c82333;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(240, 147, 251, 0.5);
+            animation: shake 0.5s;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateY(-3px) translateX(0); }
+            25% { transform: translateY(-3px) translateX(-5px); }
+            75% { transform: translateY(-3px) translateX(5px); }
         }
         
         .btn-cancel {
-            background: #6c757d;
+            background: linear-gradient(135deg, #6c757d, #495057);
             color: white;
+            box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
         }
         
         .btn-cancel:hover {
-            background: #5a6268;
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(108, 117, 125, 0.5);
             text-decoration: none;
             color: white;
         }
@@ -285,16 +369,102 @@ $csrf_token = generateCSRFToken();
         .association-list {
             list-style: none;
             padding: 0;
-            margin: 10px 0;
+            margin: 15px 0;
         }
         
         .association-list li {
-            padding: 8px 0;
-            border-bottom: 1px solid #dee2e6;
+            padding: 10px 15px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+            color: #495057;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+        }
+        
+        .association-list li i {
+            color: var(--warning-start);
         }
         
         .association-list li:last-child {
             border-bottom: none;
+        }
+        
+        /* Option Boxes */
+        .border.rounded {
+            border-radius: 16px !important;
+            border: 2px solid #e9ecef !important;
+            padding: 20px !important;
+            margin-bottom: 20px !important;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        .border.rounded:hover {
+            border-color: #dee2e6 !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+        
+        .border.rounded h6 {
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+        
+        .border.rounded p {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        /* Alert */
+        .alert {
+            border-radius: 12px;
+            border: none;
+            padding: 15px 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            animation: fadeInDown 0.5s ease;
+        }
+        
+        .alert-danger {
+            background: linear-gradient(135deg, rgba(240, 147, 251, 0.15), rgba(245, 87, 108, 0.15));
+            border-left: 5px solid var(--danger-start);
+            color: #721c24;
+        }
+        
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            
+            .delete-body {
+                padding: 25px;
+            }
+            
+            .delete-header {
+                padding: 30px 20px;
+            }
         }
     </style>
 </head>

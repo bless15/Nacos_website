@@ -12,12 +12,12 @@
 // Security gate
 require_once __DIR__ . '/../includes/security.php';
 
-// Include required files
-require_once '../config/database.php';
-require_once '../includes/auth.php';
+// Bootstrap and includes
+require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/auth.php';
 
-// Require login
-requireAdminRole();
+// Require full admin privileges
+requireFullAdminRole();
 
 // Get current user
 $current_user = getCurrentMember();
@@ -34,9 +34,18 @@ if ($member_id <= 0) {
 
 // Get member data
 $member = $db->fetchOne(
-    "SELECT * FROM MEMBERS WHERE member_id = ?", 
+    "SELECT * FROM members WHERE member_id = ?", 
     [$member_id]
 );
+
+$member_executive_position = $member['executive_position'] ?? '';
+$executive_position_labels = [
+    'social_director' => 'Social Director',
+    'general_secretary' => 'General Secretary',
+    'academic_director' => 'Academic Director',
+    'creative_innovative_director' => 'Creative and Innovative Director',
+    'public_relations_officer' => 'PRO (Public Relations Officer)',
+];
 
 if (!$member) {
     redirectWithMessage('members.php', 'Member not found', 'error');
@@ -45,8 +54,8 @@ if (!$member) {
 // Get member's projects
 $projects = $db->fetchAll(
     "SELECT p.project_id, p.title, p.project_status, mp.role_on_project, mp.join_date
-     FROM MEMBER_PROJECTS mp
-     JOIN PROJECTS p ON mp.project_id = p.project_id
+     FROM member_projects mp
+     JOIN projects p ON mp.project_id = p.project_id
      WHERE mp.member_id = ?
      ORDER BY mp.join_date DESC",
     [$member_id]
@@ -55,8 +64,8 @@ $projects = $db->fetchAll(
 // Get member's events
 $events = $db->fetchAll(
     "SELECT e.event_id, e.event_name, e.event_date, e.event_type, me.attendance_status, me.feedback_rating
-     FROM MEMBER_EVENTS me
-     JOIN EVENTS e ON me.event_id = e.event_id
+     FROM member_events me
+     JOIN events e ON me.event_id = e.event_id
      WHERE me.member_id = ?
      ORDER BY e.event_date DESC",
     [$member_id]
@@ -87,10 +96,10 @@ $flash = getFlashMessage();
     
     <style>
         :root {
-            --primary-color: #667eea;
-            --secondary-color: #764ba2;
-            --sidebar-bg: #2c3e50;
-            --sidebar-hover: #34495e;
+            --primary-color: #0F6B3E;
+            --secondary-color: #1B8A56;
+            --sidebar-bg: #0B5D35;
+            --sidebar-hover: #0F6B3E;
         }
         
         body {
@@ -155,96 +164,260 @@ $flash = getFlashMessage();
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
             margin-bottom: 25px;
         }
+
+        .menu-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            border: 2px solid #dee2e6;
+            background: #fff;
+            color: #2c3e50;
+            font-size: 18px;
+        }
+
+        .menu-toggle:hover {
+            background: #f8f9fa;
+        }
+
+        .sidebar-overlay {
+            display: none;
+        }
         
         .profile-header {
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             color: white;
-            padding: 30px;
+            padding: 16px 18px;
             border-radius: 10px;
-            margin-bottom: 25px;
+            margin-bottom: 18px;
             position: relative;
             overflow: hidden;
+            display: block;
         }
-        
+
         .profile-header::before {
             content: '';
             position: absolute;
-            top: -50%;
-            right: -10%;
-            width: 300px;
-            height: 300px;
-            background: rgba(255, 255, 255, 0.1);
+            top: -30%;
+            right: -5%;
+            width: 180px;
+            height: 180px;
+            background: rgba(255, 255, 255, 0.06);
             border-radius: 50%;
+            filter: blur(6px);
         }
-        
+
         .profile-avatar {
-            width: 100px;
-            height: 100px;
+            width: 64px;
+            height: 64px;
             border-radius: 50%;
             background: white;
             color: var(--primary-color);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 40px;
+            font-size: 24px;
             font-weight: 700;
-            border: 4px solid rgba(255, 255, 255, 0.3);
+            border: 3px solid rgba(255, 255, 255, 0.22);
             position: relative;
             z-index: 1;
+            flex-shrink: 0;
         }
-        
+
         .profile-info {
             position: relative;
             z-index: 1;
         }
-        
+
         .profile-info h2 {
             margin: 0;
-            font-size: 32px;
+            font-size: 22px;
+            font-weight: 700;
         }
-        
+
         .profile-info p {
-            margin: 5px 0;
-            opacity: 0.9;
+            margin: 4px 0;
+            opacity: 0.95;
+            font-size: 14px;
         }
+
+        /* compact metadata row */
+        .profile-meta {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            color: rgba(255,255,255,0.95);
+            font-size: 13px;
+        }
+
+        .profile-meta i { opacity: 0.95; margin-right: 6px; }
         
+        /* Match members overview stat card sizing and layout */
         .stats-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 25px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+            margin-bottom: 20px;
         }
-        
+
         .stat-box {
             background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-            text-align: center;
+            padding: 14px 16px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            gap: 13px;
+            position: relative;
+            overflow: hidden;
         }
-        
+
+        .stat-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+        }
+
         .stat-box .icon {
-            width: 50px;
-            height: 50px;
-            margin: 0 auto 10px;
-            border-radius: 10px;
+            width: 40px;
+            height: 40px;
+            border-radius: 9px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 16px;
             color: white;
+            flex-shrink: 0;
+            margin-left: 8px; /* visually offset from accent bar */
         }
-        
-        .stat-box h3 {
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .stat-info h3 {
             margin: 0;
-            font-size: 28px;
+            font-size: 20px;
             font-weight: 700;
+            color: #2c3e50;
+            line-height: 1;
         }
-        
-        .stat-box p {
-            margin: 5px 0 0;
-            color: #666;
-            font-size: 14px;
+
+        .stat-info p {
+            margin: 4px 0 0;
+            color: #6c757d;
+            font-size: 12px;
+        }
+
+        @media (max-width: 991px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 991.98px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                box-shadow: 6px 0 20px rgba(0, 0, 0, 0.2);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+
+            .menu-toggle {
+                display: inline-flex;
+            }
+
+            .sidebar-overlay {
+                position: fixed;
+                inset: 0;
+                background: rgba(0, 0, 0, 0.45);
+                z-index: 999;
+            }
+
+            .sidebar-overlay.show {
+                display: block;
+            }
+
+            .top-bar {
+                padding: 14px;
+            }
+
+            .top-actions {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .top-actions .btn {
+                width: 100%;
+            }
+
+            .profile-header {
+                padding: 14px;
+            }
+
+            .profile-header .d-flex {
+                flex-direction: column;
+                align-items: flex-start !important;
+                gap: 12px !important;
+            }
+
+            .content-card {
+                padding: 16px;
+            }
+
+            .info-row {
+                flex-direction: column;
+                gap: 6px;
+            }
+
+            .info-label {
+                width: auto;
+            }
+        }
+
+        @media (max-width: 767.98px) {
+            .sidebar-header {
+                padding: 16px;
+            }
+
+            .sidebar-header h4 {
+                font-size: 18px;
+            }
+
+            .sidebar-menu a {
+                padding: 10px 16px;
+            }
+
+            .sidebar-menu a:hover,
+            .sidebar-menu a.active {
+                padding-left: 20px;
+            }
+
+            .main-content {
+                padding: 12px;
+            }
+
+            .stats-row {
+                grid-template-columns: 1fr;
+            }
+
+            .profile-info h2 {
+                font-size: 20px;
+            }
         }
         
         .content-card {
@@ -280,6 +453,17 @@ $flash = getFlashMessage();
         
         .info-value {
             color: #333;
+        }
+
+        .role-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .role-actions .btn {
+            margin-left: 0 !important;
         }
         
         .badge {
@@ -323,52 +507,20 @@ $flash = getFlashMessage();
 </head>
 <body>
     <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <img src="../assets/images/nacos_logo.jpg" alt="NACOS Logo" style="height: 60px; margin-bottom: 10px;">
-            <h4>NACOS Dashboard</h4>
-            <small>Admin Panel</small>
-        </div>
-        
-        <div class="sidebar-menu">
-            <a href="index.php">
-                <i class="fas fa-home"></i> Dashboard
-            </a>
-            <a href="members.php" class="active">
-                <i class="fas fa-users"></i> Members
-            </a>
-            <a href="projects.php">
-                <i class="fas fa-project-diagram"></i> Projects
-            </a>
-            <a href="events.php">
-                <i class="fas fa-calendar-alt"></i> Events
-            </a>
-            <a href="resources.php">
-                <i class="fas fa-book"></i> Resources
-            </a>
-            <a href="partners.php">
-                <i class="fas fa-handshake"></i> Partners
-            </a>
-            <a href="documents.php">
-                <i class="fas fa-folder"></i> Documents
-            </a>
-            <hr style="border-color: rgba(255,255,255,0.1);">
-            <a href="../public/index.php" target="_blank">
-                <i class="fas fa-external-link-alt"></i> View Public Site
-            </a>
-            <a href="logout.php">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </a>
-        </div>
-    </div>
+    <?php require_once __DIR__ . '/includes/sidebar.php'; ?>
     
     <!-- Main Content -->
     <div class="main-content">
         <!-- Top Bar -->
         <div class="top-bar">
-            <div class="d-flex justify-content-between align-items-center">
-                <h3><i class="fas fa-user me-2"></i> Member Profile</h3>
-                <div class="d-flex gap-2">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="menu-toggle" id="menuToggle" aria-label="Toggle navigation menu">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h3><i class="fas fa-user me-2"></i> Member Profile</h3>
+                </div>
+                <div class="d-flex gap-2 top-actions">
                     <a href="edit_member.php?id=<?php echo $member_id; ?>" class="btn btn-warning">
                         <i class="fas fa-edit me-2"></i> Edit Profile
                     </a>
@@ -408,31 +560,31 @@ $flash = getFlashMessage();
         <!-- Statistics -->
         <div class="stats-row">
             <div class="stat-box">
-                <div class="icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                <div class="icon" style="background: linear-gradient(135deg, #0F6B3E, #1B8A56);">
                     <i class="fas fa-project-diagram"></i>
                 </div>
-                <h3><?php echo $total_projects; ?></h3>
+                <h4><?php echo $total_projects; ?></h4>
                 <p>Total Projects</p>
             </div>
             <div class="stat-box">
-                <div class="icon" style="background: linear-gradient(135deg, #11998e, #38ef7d);">
+                <div class="icon" style="background: linear-gradient(135deg, #1B8A56, #2FA66A);">
                     <i class="fas fa-tasks"></i>
                 </div>
-                <h3><?php echo $active_projects; ?></h3>
+                <h4><?php echo $active_projects; ?></h4>
                 <p>Active Projects</p>
             </div>
             <div class="stat-box">
-                <div class="icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                <div class="icon" style="background: linear-gradient(135deg, #2FA66A, #0F6B3E);">
                     <i class="fas fa-calendar-check"></i>
                 </div>
-                <h3><?php echo $total_events; ?></h3>
+                <h4><?php echo $total_events; ?></h4>
                 <p>Events Registered</p>
             </div>
             <div class="stat-box">
-                <div class="icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                <div class="icon" style="background: linear-gradient(135deg, #1B8A56, #0B5D35);">
                     <i class="fas fa-check-circle"></i>
                 </div>
-                <h3><?php echo $attended_events; ?></h3>
+                <h4><?php echo $attended_events; ?></h4>
                 <p>Events Attended</p>
             </div>
         </div>
@@ -447,7 +599,7 @@ $flash = getFlashMessage();
                         <div class="info-label">Status:</div>
                         <div class="info-value">
                             <?php 
-                            $status_colors = ['active' => 'success', 'inactive' => 'secondary', 'alumni' => 'info'];
+                            $status_colors = ['active' => 'success', 'inactive' => 'secondary', 'alumni' => 'warning'];
                             $color = $status_colors[$member['membership_status']] ?? 'secondary';
                             ?>
                             <span class="badge bg-<?php echo $color; ?>">
@@ -458,9 +610,9 @@ $flash = getFlashMessage();
                     
                     <div class="info-row">
                         <div class="info-label">Role:</div>
-                        <div class="info-value">
+                        <div class="info-value role-actions">
                             <?php 
-                            $role_colors = ['admin' => 'danger', 'executive' => 'warning', 'member' => 'info'];
+                            $role_colors = ['admin' => 'danger', 'executive' => 'warning', 'member' => 'success'];
                             $role_icons = ['admin' => 'crown', 'executive' => 'star', 'member' => 'user'];
                             $role_color = $role_colors[$member['role']] ?? 'info';
                             $role_icon = $role_icons[$member['role']] ?? 'user';
@@ -469,10 +621,15 @@ $flash = getFlashMessage();
                                 <i class="fas fa-<?php echo $role_icon; ?> me-1"></i>
                                 <?php echo ucfirst($member['role']); ?>
                             </span>
+                            <?php if (($member['role'] ?? '') === 'executive' && !empty($member_executive_position)): ?>
+                                <span class="badge bg-dark-subtle text-dark border">
+                                    <?php echo htmlspecialchars($executive_position_labels[$member_executive_position] ?? ucwords(str_replace('_', ' ', $member_executive_position))); ?>
+                                </span>
+                            <?php endif; ?>
                             
                             <!-- Role Management Button (Admin Only) -->
-                            <?php if (isMemberAdmin()): ?>
-                                <button type="button" class="btn btn-sm btn-outline-primary ms-2" 
+                            <?php if (isLoggedIn() || isMemberAdmin()): ?>
+                                <button type="button" class="btn btn-sm btn-outline-primary" 
                                         data-bs-toggle="modal" data-bs-target="#roleModal">
                                     <i class="fas fa-user-shield me-1"></i> Manage Role
                                 </button>
@@ -488,7 +645,7 @@ $flash = getFlashMessage();
                     <div class="info-row">
                         <div class="info-label">Level:</div>
                         <div class="info-value">
-                            <span class="badge bg-primary"><?php echo $member['level']; ?> Level</span>
+                            <span class="badge bg-success"><?php echo $member['level']; ?> Level</span>
                         </div>
                     </div>
                     
@@ -635,12 +792,12 @@ $flash = getFlashMessage();
                                             <td>
                                                 <?php 
                                                 $status_colors = [
-                                                    'registered' => 'info',
+                                                    'registered' => 'success',
                                                     'attended' => 'success',
                                                     'absent' => 'danger',
                                                     'cancelled' => 'secondary'
                                                 ];
-                                                $color = $status_colors[$event['attendance_status']] ?? 'info';
+                                                $color = $status_colors[$event['attendance_status']] ?? 'success';
                                                 ?>
                                                 <span class="badge bg-<?php echo $color; ?>">
                                                     <?php echo ucfirst($event['attendance_status']); ?>
@@ -675,7 +832,7 @@ $flash = getFlashMessage();
                         
                         <div class="mb-3">
                             <label class="form-label">Select New Role:</label>
-                            <select name="new_role" class="form-select" required>
+                            <select name="new_role" id="newRoleSelect" class="form-select" required>
                                 <option value="member" <?php echo $member['role'] === 'member' ? 'selected' : ''; ?>>
                                     <i class="fas fa-user"></i> Member - Regular Access
                                 </option>
@@ -691,6 +848,31 @@ $flash = getFlashMessage();
                                 • <strong>Member:</strong> Basic access to member dashboard<br>
                                 • <strong>Executive:</strong> Can manage specific features<br>
                                 • <strong>Admin:</strong> Full access to admin panel
+                            </div>
+                        </div>
+
+                        <div class="mb-3" id="executivePositionGroup" style="display: none;">
+                            <label class="form-label">Executive Position:</label>
+                            <select name="executive_position" id="executivePositionSelect" class="form-select">
+                                <option value="">Select executive position</option>
+                                <option value="social_director" <?php echo $member_executive_position === 'social_director' ? 'selected' : ''; ?>>Social Director (1 slot)</option>
+                                <option value="general_secretary" <?php echo $member_executive_position === 'general_secretary' ? 'selected' : ''; ?>>General Secretary (2 slots)</option>
+                                <option value="academic_director" <?php echo $member_executive_position === 'academic_director' ? 'selected' : ''; ?>>Academic Director (1 slot)</option>
+                                <option value="creative_innovative_director" <?php echo $member_executive_position === 'creative_innovative_director' ? 'selected' : ''; ?>>Creative and Innovative Director (1 slot)</option>
+                                <option value="public_relations_officer" <?php echo $member_executive_position === 'public_relations_officer' ? 'selected' : ''; ?>>PRO - Public Relations Officer (1 slot)</option>
+                            </select>
+                            <div class="form-text mt-1">
+                                Total executives allowed: 6 (1 Social, 2 General Secretary, 1 Academic, 1 Creative & Innovative, 1 PRO).
+                            </div>
+                            <div class="alert alert-light border mt-2 mb-0">
+                                <strong>Permissions Preview</strong>
+                                <ul class="mb-0 mt-2 ps-3">
+                                    <li><strong>Social Director:</strong> full Events access; Documents = add/view only (no delete/edit).</li>
+                                    <li><strong>General Secretary:</strong> full Documents + full Resources access.</li>
+                                    <li><strong>Academic Director:</strong> full Resources access + full Past Questions access; Documents = add/view only (no delete/edit).</li>
+                                    <li><strong>Creative &amp; Innovative Director:</strong> full Projects + full Resources access; Documents = add/view only (no delete/edit).</li>
+                                    <li><strong>PRO:</strong> full Announcements + full Events access; Documents = add/view only (no delete/edit).</li>
+                                </ul>
                             </div>
                         </div>
                         
@@ -714,6 +896,53 @@ $flash = getFlashMessage();
     <?php include __DIR__ . '/includes/footer.php'; ?>
     
     <script>
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.querySelector('.sidebar');
+        const sidebarOverlay = document.getElementById('sidebarBackdrop') || document.getElementById('sidebarOverlay');
+
+        function closeSidebar() {
+            sidebar.classList.remove('show');
+            sidebarOverlay.classList.remove('show');
+        }
+
+        if (menuToggle && sidebar && sidebarOverlay) {
+            menuToggle.addEventListener('click', function () {
+                sidebar.classList.toggle('show');
+                sidebarOverlay.classList.toggle('show');
+            });
+
+            sidebarOverlay.addEventListener('click', closeSidebar);
+
+            window.addEventListener('resize', function () {
+                if (window.innerWidth > 991.98) {
+                    closeSidebar();
+                }
+            });
+        }
+
+        const newRoleSelect = document.getElementById('newRoleSelect');
+        const executivePositionGroup = document.getElementById('executivePositionGroup');
+        const executivePositionSelect = document.getElementById('executivePositionSelect');
+
+        function toggleExecutivePositionField() {
+            if (!newRoleSelect || !executivePositionGroup || !executivePositionSelect) {
+                return;
+            }
+
+            const isExecutive = newRoleSelect.value === 'executive';
+            executivePositionGroup.style.display = isExecutive ? 'block' : 'none';
+            executivePositionSelect.required = isExecutive;
+
+            if (!isExecutive) {
+                executivePositionSelect.value = '';
+            }
+        }
+
+        if (newRoleSelect) {
+            newRoleSelect.addEventListener('change', toggleExecutivePositionField);
+            toggleExecutivePositionField();
+        }
+
         // Auto-dismiss alerts
         setTimeout(() => {
             document.querySelectorAll('.alert').forEach(alert => {
